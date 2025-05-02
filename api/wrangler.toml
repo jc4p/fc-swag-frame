@@ -1,0 +1,4 @@
+name = "fc-swag-api"
+main = "src/index.js"
+compatibility_date = "2025-05-02"
+
