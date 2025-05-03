@@ -5,12 +5,15 @@
 	"scripts": {
 		"deploy": "wrangler deploy",
 		"dev": "wrangler dev",
-			"start": "wrangler dev"
-		},
-		"dependencies": {
-			"hono": "^3.0.0"
-		},
-		"devDependencies": {
-			"wrangler": "^4.14.1"
-		}
+		"start": "wrangler dev"
+	},
+	"dependencies": {
+		"@farcaster/auth-client": "^0.3.0",
+		"@tsndr/cloudflare-worker-jwt": "^3.1.4",
+		"hono": "^3.0.0",
+		"viem": "^2.28.3"
+	},
+	"devDependencies": {
+		"wrangler": "^4.14.1"
+	}
 }

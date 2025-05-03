@@ -1,95 +1,80 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import { getProducts } from '@/lib/api';
+import { ProductOptions } from '@/components/ProductOptions/ProductOptions';
+import styles from './page.module.css'; // Import page-specific styles
 
-export default function Home() {
+// Define Frame metadata specifically for this page
+const frameMetadata = {
+  version: "next", // Correct version as per FRAME_INTEGRATION.md
+  imageUrl: "https://placehold.co/600x400/BFA181/111111.png?text=Design+Your+Tee", // 1.91:1 using placehold.co, added .png extension
+  button: {
+    title: "Design Now!",
+    action: {
+      type: "launch_frame",
+      name: "FC Swag",
+      url: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+      splashImageUrl: "https://placehold.co/200x200/FFFFFF/111111.png?text=Loading", // Using placehold.co, added .png extension
+      splashBackgroundColor: "#FFFFFF" // Match app background
+    }
+  }
+};
+
+// Export metadata for this page, including the fc:frame details
+export const metadata = {
+  title: "FC Swag Frame - Design Your Tee", // Page-specific title
+  description: "Use the designer to create your custom T-shirt.", // Page-specific description
+  other: {
+    'fc:frame': JSON.stringify(frameMetadata)
+  }
+};
+
+export default async function DesignPage() {
+  let products = [];
+  let error = null;
+
+  try {
+    products = await getProducts();
+  } catch (e) {
+    console.error("Failed to load products for page:", e);
+    error = "Could not load product information. Please try again later.";
+    // Optionally, you could implement retries or fallback data here
+  }
+
+  // For MVP, we assume there's at least one product (the seeded T-shirt)
+  // In a real app, handle the case where products array might be empty even without an error
+  const product = products.length > 0 ? products[0] : null;
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.js</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    // Use the container utility class from globals.css
+    <main className={`container ${styles.pageLayout}`}>
+      <div className={styles.introSection}>
+        <h1 className={styles.mainHeading}>FC SWAG</h1>
+      </div>
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
+      {error && (
+        <div className={styles.errorSection}>
+          <p>{error}</p>
         </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      )}
+
+      {!error && !product && (
+         <div className={styles.infoSection}>
+           <p>No products currently available. Check back soon!</p>
+         </div>
+      )}
+
+      {product && (
+        <div className={styles.designerGrid}>
+          {/* Preview Area removed, will be handled inside ProductOptions */}
+          {/* <div className={styles.previewArea}> ... </div> */}
+
+          {/* Product Options Client Component - Takes full width on mobile now */}
+          <div className={styles.optionsArea}>
+             <ProductOptions
+               product={product}
+             />
+          </div>
+        </div>
+      )}
+    </main>
   );
 }

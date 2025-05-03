@@ -2,3 +2,40 @@ name = "fc-swag-api"
 main = "src/index.js"
 compatibility_date = "2025-05-02"
 
+# Enable Node.js compatibility APIs
+compatibility_flags = ["nodejs_compat"]
+
+# Variables and Secrets
+[vars]
+# Define non-secret variables here
+# EXAMPLE_VAR = "example_value"
+
+# Secrets are managed via `wrangler secret put <name>`
+# Required secrets: PRINTFUL_API_KEY, AUTH_SECRET
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"                 # i.e. env.DB
+database_name = "fc_swag"
+database_id = "42264697-0923-4fbc-8c55-bb904eee9ddf"
+
+# Durable Object bindings
+[[migrations]]
+tag = "v1" # Should be unique for each entry
+new_classes = ["SessionDurableObject", "MockupQueueDurableObject"]
+
+[durable_objects]
+bindings = [
+  { name = "SESSION_DO", class_name = "SessionDurableObject" },
+  { name = "MOCKUP_QUEUE_DO", class_name = "MockupQueueDurableObject" }
+]
+
+# Environment-specific settings (optional)
+# [env.production]
+# name = "fc-swag-api-prod"
+
+# Scheduled Task Configuration
+[triggers]
+# Cron format: <Minute> <Hour> <Day_of_Month> <Month> <Day_of_Week>
+# Example: Run daily at midnight UTC
+crons = ["0 0 * * *"]

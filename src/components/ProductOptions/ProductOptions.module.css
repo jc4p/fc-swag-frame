@@ -1,0 +1,329 @@
+.optionsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* Integrated Preview/Upload Area */
+.previewUploadSection {
+  order: -1; /* Move to top on mobile */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-bg-alt);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  width: 100%;
+  max-width: 400px;
+  min-height: 250px;
+  margin-left: auto;
+  margin-right: auto;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+.previewUploadSection:hover {
+  border-color: var(--color-accent);
+}
+
+.uploadPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--color-secondary);
+  text-align: center;
+}
+
+.uploadIcon {
+  font-size: 2rem; /* Make icon larger */
+}
+
+.previewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Cover the area, might crop */
+}
+
+/* Product Name & Starting Price Section */
+/* .titlePriceSection { ... } */
+/* .startingPrice { ... } */
+
+/* Keep Option Section base styling */
+.optionSection {
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-light);
+  order: 1; /* Default order for sections */
+}
+
+.sectionTitle {
+  font-size: 1.125rem; /* 18px */
+  font-weight: 600;
+  font-family: var(--font-sans);
+  color: var(--color-primary);
+  margin-bottom: var(--space-md);
+}
+
+/* Color Swatches */
+.colorSwatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  cursor: pointer;
+  transition: transform 0.1s ease-in-out, border-color 0.2s ease;
+  padding: 0; /* Remove default button padding */
+  background-color: grey; /* Fallback */
+}
+
+.swatch:hover {
+  transform: scale(1.1);
+}
+
+.swatch.selected {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent); /* Extra visual indication */
+}
+
+/* Commission Button Styles */
+.commissionButtons {
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping on very small screens if needed */
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+}
+
+.commissionButton {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-light);
+  color: var(--color-primary);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  flex-grow: 1; /* Allow buttons to grow to fill space */
+  text-align: center;
+}
+
+.commissionButton:hover:not(.selected) {
+  border-color: var(--color-secondary);
+  background-color: var(--color-bg-alt);
+}
+
+.commissionButton.selected {
+  background-color: var(--color-primary);
+  color: var(--color-bg-light);
+  border-color: var(--color-primary);
+}
+
+/* Styles for price breakdown (can keep mostly as is) */
+.priceBreakdown {
+    font-size: 0.875rem; /* 14px */
+    color: var(--color-secondary);
+    margin-top: var(--space-sm);
+    margin-bottom: var(--space-xs);
+    line-height: 1.5;
+    background-color: var(--color-bg-alt);
+    padding: var(--space-sm);
+    border-radius: var(--radius-sm);
+}
+
+.priceBreakdown p {
+    margin: 0; /* Remove default paragraph margins if any */
+}
+
+.priceBreakdown strong {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+/* Style for the '+ Shipping' text */
+.shippingText {
+    font-weight: normal; /* Ensure it's not bold */
+    color: var(--color-secondary); /* Match label color */
+    font-size: inherit; /* Inherit size from parent paragraph */
+    margin-left: var(--space-xs); /* Add small space before it */
+}
+
+.commissionNote {
+    font-size: 0.75rem; /* 12px */
+    color: var(--color-secondary);
+    margin-top: var(--space-md);
+}
+
+/* Action Button Section (Publish) */
+.actionSection {
+    margin-top: var(--space-md);
+    order: 99; /* Ensure publish button is last */
+}
+
+.primaryButton {
+  background-color: var(--color-primary);
+  color: var(--color-bg-light);
+  padding: var(--space-md) var(--space-lg);
+  font-weight: 600;
+  width: 100%;
+}
+
+.primaryButton:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.primaryButton:disabled {
+  background-color: var(--color-secondary);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --- Responsive Adjustments --- */
+@media (min-width: 768px) {
+  .optionsContainer {
+      /* No change needed here if parent grid handles columns */
+  }
+
+  .previewUploadSection {
+     order: 0; /* Reset order for desktop layout */
+  }
+
+  /* Other elements will flow naturally */
+}
+
+.productName {
+  font-size: 1.75rem; /* 28px */
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: var(--space-xs); /* Keep tight margin */
+  line-height: 1.2;
+  order: 0;
+}
+
+/* Style for Base Price below title */
+.basePriceDisplay {
+    font-size: 0.9rem; /* Slightly smaller */
+    font-weight: 500;
+    color: var(--color-secondary);
+    margin: 0; /* Remove all default margins */
+    margin-top: var(--space-sm);
+    order: 0; /* Keep it grouped with title */
+}
+
+.basePriceDisplay strong {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+/* Ensure space before next element (Color Selector) */
+.optionSection.colorSelector {
+    margin-top: 0;
+}
+
+/* Commission Button Styles */
+.commissionButtons {
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping on very small screens if needed */
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+}
+
+.commissionButton {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-light);
+  color: var(--color-primary);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  flex-grow: 1; /* Allow buttons to grow to fill space */
+  text-align: center;
+}
+
+.commissionButton:hover:not(.selected) {
+  border-color: var(--color-secondary);
+  background-color: var(--color-bg-alt);
+}
+
+.commissionButton.selected {
+  background-color: var(--color-primary);
+  color: var(--color-bg-light);
+  border-color: var(--color-primary);
+}
+
+/* Styles for price breakdown (can keep mostly as is) */
+.priceBreakdown {
+    font-size: 0.875rem; /* 14px */
+    color: var(--color-secondary);
+    margin-top: var(--space-sm);
+    margin-bottom: var(--space-xs);
+    line-height: 1.5;
+    background-color: var(--color-bg-alt);
+    padding: var(--space-sm);
+    border-radius: var(--radius-sm);
+}
+
+.priceBreakdown p {
+    margin: 0; /* Remove default paragraph margins if any */
+}
+
+.priceBreakdown strong {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+/* Style for the '+ Shipping' text */
+.shippingText {
+    font-weight: normal; /* Ensure it's not bold */
+    color: var(--color-secondary); /* Match label color */
+    font-size: inherit; /* Inherit size from parent paragraph */
+    margin-left: var(--space-xs); /* Add small space before it */
+}
+
+.commissionNote {
+    font-size: 0.75rem; /* 12px */
+    color: var(--color-secondary);
+    margin-top: var(--space-md);
+}
+
+/* Action Button Section (Publish) */
+.actionSection {
+    margin-top: var(--space-md);
+    order: 99; /* Ensure publish button is last */
+}
+
+.primaryButton {
+  background-color: var(--color-primary);
+  color: var(--color-bg-light);
+  padding: var(--space-md) var(--space-lg);
+  font-weight: 600;
+  width: 100%;
+}
+
+.primaryButton:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.primaryButton:disabled {
+  background-color: var(--color-secondary);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --- Responsive Adjustments --- */
+@media (min-width: 768px) {
+  .optionsContainer {
+      /* No change needed here if parent grid handles columns */
+  }
+
+  .previewUploadSection {
+     order: 0; /* Reset order for desktop layout */
+  }
+
+  /* Other elements will flow naturally */
+} 
