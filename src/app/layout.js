@@ -1,5 +1,7 @@
 import { FrameInit } from "@/components/FrameInit";
 import "./globals.css";
+import { DebugProvider } from "../contexts/DebugContext";
+import DebugOverlay from "../components/DebugOverlay";
 
 export const metadata = {
   title: "FC Swag Frame",
@@ -10,8 +12,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        {children}
-        <FrameInit />
+        <DebugProvider>
+          {children}
+          <FrameInit />
+          {process.env.NODE_ENV === 'development' && <DebugOverlay />}
+        </DebugProvider>
       </body>
     </html>
   );

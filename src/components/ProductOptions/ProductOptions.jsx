@@ -5,6 +5,7 @@ import { Stage, Layer, Rect, Image, Transformer, Text } from 'react-konva';
 import Konva from 'konva'; // Import Konva for methods like Konva.Image.fromURL if needed, though use-image is preferred
 import useImage from 'use-image'; // Hook for loading images
 import styles from './ProductOptions.module.css';
+import { useDebug } from '@/contexts/DebugContext'; // <-- Add import
 
 // --- Constants ---
 const RAW_COST = 14.95;
@@ -71,6 +72,8 @@ const getContrastColor = (hexColor) => {
  * Renders interactive options, handles image upload/manipulation via Konva.js, and publishing.
  */
 export function ProductOptions({ product }) {
+  const { logToOverlay } = useDebug(); // <-- Get the logging function
+
   // --- State --- 
   const [selectedColorName, setSelectedColorName] = useState(null);
   const [selectedSize, setSelectedSize] = useState(null);
@@ -102,6 +105,19 @@ export function ProductOptions({ product }) {
   const [textureImg, textureStatus] = useImage(textureUrl || '', 'anonymous');
   const [templateImg, templateStatus] = useImage(templateImageUrl || '', 'anonymous');
   const [userImg, userImgStatus] = useImage(userImageUrl || '', 'anonymous');
+
+  // --- Effect to log userImgStatus changes ---
+  useEffect(() => {
+    if (userImageUrl) { // Only log if we are trying to load a user image
+      logToOverlay(`useImage status for user image: ${userImgStatus}`);
+      if (userImgStatus === 'failed') {
+        logToOverlay('useImage failed to load the user image.');
+      }
+      if (userImgStatus === 'loaded' && userImg) {
+        logToOverlay(`useImage loaded: ${userImg.width}x${userImg.height}`);
+      }
+    }
+  }, [userImgStatus, userImageUrl, logToOverlay, userImg]); // Added userImg dependency
 
   // --- Helper: Calculate Price --- 
   const calculatePrice = useCallback((rate) => {
@@ -214,13 +230,14 @@ export function ProductOptions({ product }) {
               draggable: true,
           };
           setUserImageAttrs(initialAttrs);
-          console.log("User image initial attributes set.");
+          logToOverlay("User image initial attributes set."); // Keep existing log
       } else if (!uploadedImageDataUrl || userImgStatus === 'loading' || userImgStatus === 'failed') {
           // Clear attributes if image is removed/unloaded/failed
            setUserImageAttrs(null);
            // Deselection handled by the effect below now
+           // Logged in the status effect now
        }
-  }, [userImg, userImgStatus, stageSize.width, printAreaRect, uploadedImageDataUrl]); // Added uploadedImageDataUrl
+  }, [userImg, userImgStatus, stageSize.width, printAreaRect, uploadedImageDataUrl, logToOverlay]); // Added logToOverlay
 
   // --- Effect to Auto-Select Image When It First Loads --- 
   useEffect(() => {
@@ -372,15 +389,41 @@ export function ProductOptions({ product }) {
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
     if (file) {
+      logToOverlay(`File Selected: Name=${file.name}, Type=${file.type}, Size=${file.size} bytes`); // <-- Log file details
+
+      // Check for HEIC/HEIF specifically
+      if (file.type === 'image/heic' || file.type === 'image/heif') {
+        logToOverlay("WARNING: HEIC/HEIF file selected. Browser/Canvas support might be limited.");
+      }
+
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setUploadedImageDataUrl(reader.result);
-        console.log("File selected:", file.name);
-        setUserImageAttrs(null); // Reset attrs when new image uploaded
+
+      reader.onloadstart = () => {
+        logToOverlay(`FileReader: Starting to read ${file.name}`); // <-- Log start
       };
+
+      reader.onloadend = () => {
+        logToOverlay(`FileReader: Finished reading ${file.name}. Result length: ${reader.result?.length || 0}`); // <-- Log finish
+        if (reader.result) {
+            setUploadedImageDataUrl(reader.result);
+            logToOverlay("FileReader: Set uploadedImageDataUrl state."); // <-- Log state set
+            setUserImageAttrs(null); // Reset attrs when new image uploaded
+        } else {
+            logToOverlay("FileReader Error: onloadend fired but reader.result is empty.");
+            alert("Error reading file. The file might be corrupted or in an unsupported format.");
+        }
+      };
+
+      reader.onerror = (error) => {
+         logToOverlay(`FileReader Error: Failed to read ${file.name}. Error: ${error}`); // <-- Log error
+         alert("Could not read the selected file. Please try a different image.");
+      };
+
       reader.readAsDataURL(file);
+    } else {
+      logToOverlay("File Input: No file selected or event triggered without files.");
     }
-    event.target.value = '';
+    event.target.value = ''; // Clear input value
   };
 
   const handlePublishClick = async () => {
@@ -589,6 +632,13 @@ export function ProductOptions({ product }) {
                           dragBoundFunc={dragBoundFunc} // <-- Apply drag bounds
                           onClick={() => setIsUserImageSelected(true)} 
                           onTap={() => setIsUserImageSelected(true)} 
+                          onError={(e) => { // <-- Add onError handler
+                            logToOverlay(`Konva Image Error: Failed to render user image. Error event: ${JSON.stringify(e)}`);
+                            console.error("Konva Image Rendering Error:", e);
+                            // Optionally clear the image state here if it fails to render
+                            // setUploadedImageDataUrl(null); 
+                            // setUserImageAttrs(null);
+                          }}
                        />
                     )}
   
@@ -632,12 +682,12 @@ export function ProductOptions({ product }) {
                  Loading Images...
             </div>
          )}
-         {/* Hidden File Input */}
+         {/* Hidden File Input - Add HEIC accept type */}
          <input
            type="file"
            ref={fileInputRef}
            onChange={handleFileChange}
-           accept="image/png, image/jpeg, image/webp"
+           accept="image/png, image/jpeg, image/webp, image/heic, image/heif" // <-- Added HEIC/HEIF
            style={{ display: 'none' }}
            onClick={(e) => { e.target.value = null }}
          />
