@@ -15,7 +15,7 @@ export default function RootLayout({ children }) {
         <DebugProvider>
           {children}
           <FrameInit />
-          {process.env.NODE_ENV === 'development' && <DebugOverlay />}
+          <DebugOverlay />
         </DebugProvider>
       </body>
     </html>
