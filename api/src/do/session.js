@@ -18,22 +18,28 @@ export class SessionDurableObject {
     async fetch(request) {
         const url = new URL(request.url);
 
-        if (url.pathname === '/api/ws') {
-            // Expecting a WebSocket upgrade request
+        // Handle WebSocket upgrade requests from the main worker router
+        if (url.pathname.endsWith('/api/ws')) { // Match based on how router forwards
             if (request.headers.get("Upgrade") != "websocket") {
                 return new Response("Expected Upgrade: websocket", { status: 400 });
             }
-
-            // Create the WebSocket pair
             const [client, server] = Object.values(new WebSocketPair());
-
-            // Accept the connection
             await this.handleSession(server);
-
-            // Return the client endpoint to the runtime
             return new Response(null, { status: 101, webSocket: client });
+
+        // Handle internal notification requests from other parts of the worker (e.g., webhook handler)
+        } else if (url.pathname === '/notify' && request.method === 'POST') { 
+            try {
+                const notificationData = await request.json();
+                console.log('[SessionDO] Received notification:', notificationData);
+                this.broadcast(notificationData); // Broadcast the received data
+                return new Response(JSON.stringify({ success: true }), { status: 200 });
+            } catch (e) {
+                console.error('[SessionDO] Failed to process notification:', e);
+                return new Response('Invalid notification data', { status: 400 });
+            }
         } else {
-             // Can add other methods if needed, e.g., POST to notify
+             // Not a WebSocket upgrade or internal notification
              return new Response('Not found', { status: 404 });
         }
     }

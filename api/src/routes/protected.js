@@ -99,7 +99,33 @@ protectedRoutes.post('/designs', async (c) => {
         }
         console.log(`Design DB record created for FID ${userFid} with ID ${newDesignId}.`);
 
-        // TODO: Enqueue mockup generation task
+        // Enqueue mockup generation task
+        try {
+            // Use the correct binding name from wrangler.toml
+            const doBinding = c.env.MOCKUP_QUEUE_DO; 
+            if (!doBinding) {
+                throw new Error("MOCKUP_QUEUE_DO binding is not configured in wrangler.toml or not available in env.");
+            }
+            const doId = doBinding.idFromName("singleton"); // Use a consistent name for the queue DO
+            const stub = doBinding.get(doId);
+
+            // Send the task to the DO
+            await stub.fetch('http://do-mockup-queue/queue', { // Use a dummy internal URL
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    designId: newDesignId,
+                    imageUrl: imageUrl,
+                    variantId: parseInt(variant_id) // Pass variant_id too, needed for Printful
+                })
+            });
+            console.log(`Mockup task enqueued for design ID: ${newDesignId}`);
+        } catch (doError) {
+            console.error(`Failed to enqueue mockup task for design ${newDesignId}:`, doError);
+            // Decide how to handle this: maybe update design status to 'queue_failed'?
+            // For now, we'll just log it and return success for the design creation itself.
+            // Optionally, could return a 202 Accepted with a warning.
+        }
 
         return c.json({ success: true, designId: newDesignId, imageUrl: imageUrl }, 201);
 

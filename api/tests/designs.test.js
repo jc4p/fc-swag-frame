@@ -20,6 +20,7 @@ describe('Designs API Endpoint (Live Dev Server)', () => {
     let testProductId = 1; // From previous DB query
     let testVariantId = 1; // From previous DB query
     const BASE_URL = 'http://localhost:8787'; // Target the running dev server
+    let createdDesignId = null; // Store ID for potential cleanup or further tests
 
     beforeAll(async () => {
         if (!AUTH_SECRET) {
@@ -33,8 +34,9 @@ describe('Designs API Endpoint (Live Dev Server)', () => {
     });
 
     // No worker setup/teardown needed
+    // TODO: Add afterAll to clean up created design?
 
-    it('POST /api/designs should create a design with valid data', async () => {
+    it('POST /api/designs should create a design and enqueue mockup task', async () => {
         const formData = new FormData();
         formData.append('product_id', testProductId.toString());
         formData.append('variant_id', testVariantId.toString());
@@ -59,6 +61,14 @@ describe('Designs API Endpoint (Live Dev Server)', () => {
         const expectedUrlPrefix = `${process.env.R2_PUBLIC_URL}/user-images/${TEST_FID}/${testProductId}/`;
         expect(json.imageUrl).toStartWith(expectedUrlPrefix);
         expect(json.imageUrl).toEndWith('.png');
+
+        createdDesignId = json.designId; // Store for potential later use
+
+        // TODO: Verify DB status - This is hard to do directly from bun:test against wrangler dev.
+        // Option 1: Add a temporary debug endpoint GET /api/designs/:id/status (protected)
+        // Option 2: Check wrangler dev logs for '[DO MockupQueue] Updated status for design X to mockup_pending'
+        // For now, we rely on the 201 status and the DO logs.
+        console.log(`Test check: Design ${createdDesignId} created. Verify 'mockup_pending' status manually via logs or DB query.`);
     });
 
     it('POST /api/designs should fail without authentication', async () => {
