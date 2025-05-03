@@ -278,29 +278,35 @@ export function ProductOptions({ product }) {
 
      // If click is on the stage background OR the placeholder text
      const isBackgroundClick = e.target === stage;
-     const isPlaceholderClick = e.target.attrs.id === 'uploadPlaceholderText'; // Check ID we will add
+     const isPlaceholderClick = e.target.attrs.id === 'uploadPlaceholderText'; 
 
-     if (isBackgroundClick || isPlaceholderClick) {
-        // If no user image is loaded, trigger file input
-        if (!userImageAttrs) {
-            logToOverlay("Stage/Placeholder clicked, attempting to trigger file input..."); // <-- Log before click
-            fileInputRef.current?.click();
-        } else {
-            // If image exists, deselect it
-            console.log("Stage/Placeholder clicked, deselecting image.");
-            setIsUserImageSelected(false);
-        }
-        return;
+     if (isBackgroundClick) { // Only handle deselect on background click now
+         // If image exists, deselect it
+         if (userImageAttrs) { 
+             console.log("Stage/Placeholder clicked, deselecting image.");
+             setIsUserImageSelected(false);
+         }
+         return;
      }
      
+     // Check if the clicked target is the placeholder text - clicking the label should handle upload now
+     // If it IS the placeholder text, do nothing here, let the label handle it.
+     if (isPlaceholderClick) {
+       return; 
+     }
+
      // Check if the clicked target is the user image or its transformer
      const clickedOnTransformer = e.target.getParent()?.className === 'Transformer';
      if (e.target.attrs.id === 'userImage' || clickedOnTransformer) {
          console.log("User image or transformer clicked, selecting.");
          setIsUserImageSelected(true); // Ensure selected if image/transformer clicked
      } else {
-          console.log("Clicked on other element, deselecting.");
-          setIsUserImageSelected(false); // Clicked elsewhere (e.g. print area rect)
+          // If not the background, not placeholder, not user image/transformer, likely the print area rect
+          // Deselect if needed
+          if (userImageAttrs) { 
+             console.log("Clicked on other element (e.g., print area), deselecting.");
+             setIsUserImageSelected(false);
+          }
      }
    };
 
@@ -556,13 +562,7 @@ export function ProductOptions({ product }) {
        <div
          ref={previewContainerRef}
          className={styles.previewContainer}
-         style={{
-           cursor: !userImageAttrs ? 'pointer' : 'default',
-           aspectRatio: selectedVariant?.template_width && selectedVariant?.template_height ? 
-             `${selectedVariant.template_width} / ${selectedVariant.template_height}` : 
-             '1 / 1',
-           backgroundColor: selectedColor?.color_code || '#f0f0f0',
-         }}
+         style={{ position: 'relative' }}
        >
           {/* Konva Stage */}
           <Stage 
@@ -643,7 +643,7 @@ export function ProductOptions({ product }) {
                        />
                     )}
   
-                    {/* Placeholder Text - Use calculated fill color */}
+                    {/* Placeholder Text - Rendered by Konva */}
                     {!userImageUrl && templateStatus === 'loaded' && printAreaRect.width > 0 && (
                        <Text
                           id="uploadPlaceholderText"
@@ -677,15 +677,38 @@ export function ProductOptions({ product }) {
               </Layer>{/* End Interactive Layer */}
           </Stage>
 
+          {/* Label OVER the stage, linked to the input, only shown when no image */} 
+          {!userImageAttrs && (
+            <label 
+              htmlFor="file-upload-input" 
+              className={styles.uploadLabel} // Add styling for the label
+              style={{ 
+                 position: 'absolute', 
+                 top: 0, 
+                 left: 0, 
+                 width: '100%', 
+                 height: '100%', 
+                 cursor: 'pointer', 
+                 zIndex: 10 // Ensure it's above Konva canvas but below loading overlay
+              }}
+            >
+              {/* Screen reader text or visually hidden content if needed */}
+              <span style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>
+                Upload your artwork
+              </span>
+            </label>
+          )}
+
          {/* Loading Overlay - Use calculated combined loading state */}
          {isAnyImageLoading && (
             <div className={styles.loadingOverlay}>
                  Loading Images...
             </div>
          )}
-         {/* Hidden File Input - Use absolute positioning instead of display:none */}
+         {/* Hidden File Input - Still keep off-screen */}
          <input
            type="file"
+           id="file-upload-input" // <-- Added ID
            ref={fileInputRef}
            onChange={handleFileChange}
            accept="image/png, image/jpeg, image/webp, image/heic, image/heif"
