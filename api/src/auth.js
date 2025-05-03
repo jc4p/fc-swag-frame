@@ -128,35 +128,50 @@ function decode(token) {
  * Sets c.userFid if valid.
  */
 export const authMiddleware = async (c, next) => {
-	const authHeader = c.req.header('Authorization');
-	if (!c.env.AUTH_SECRET) {
-		console.error("AUTH_SECRET is not configured for middleware.");
-		return c.json({ error: 'Configuration error' }, 500);
-	}
-
+	// console.log("Auth Middleware triggered"); // Removed
+	const authHeader = c.req.headers.get('Authorization');
 	if (!authHeader || !authHeader.startsWith('Bearer ')) {
+		// console.log("Auth Middleware: Missing/invalid header"); // Removed
 		return c.json({ error: 'Unauthorized: Missing or invalid Authorization header.' }, 401);
 	}
+	const token = authHeader.substring(7); // Remove "Bearer "
+	const secret = c.env.AUTH_SECRET;
+	
+	if (!secret) {
+		console.error("Auth Middleware: AUTH_SECRET missing in environment!");
+		return c.json({ error: 'Server configuration error.' }, 500);
+	}
 
-	const token = authHeader.substring(7);
+	// console.log(`Auth Middleware: Verifying token (first 10 chars): ${token.substring(0, 10)}...`); // Removed
+	// console.log(`Auth Middleware: Using secret (type: ${typeof secret}, length: ${secret?.length})`); // Removed
 
 	try {
-		const { isValid, payload, error } = await verifyToken(token, c.env.AUTH_SECRET);
-
+		// console.log("Auth Middleware: Attempting jwt.verify..."); // Removed
+		const isValid = await verify(token, secret, { algorithm: 'HS256' }); 
+		// console.log(`Auth Middleware: jwt.verify result: ${isValid}`); // Removed
+		
 		if (!isValid) {
-			console.warn(`Token verification failed: ${error}`);
-			// Use the specific error message from verifyToken
-			return c.json({ error: `Unauthorized: ${error || 'Invalid token'}` }, 401);
+			// console.error("Auth Middleware: Token failed jwt.verify (isValid=false)"); // Removed
+			throw new Error('Invalid token (verify step)');
 		}
 
-		// Add user information (FID) to the context for downstream handlers
-		c.set('userFid', payload.sub); // Assuming 'sub' holds the FID string
-		console.log(`Auth middleware: FID ${payload.sub} authorized.`);
-		await next();
+		// console.log("Auth Middleware: Attempting jwt.decode..."); // Removed
+		const { payload } = decode(token);
+		// console.log("Auth Middleware: Decoded payload:", payload); // Removed
+
+		if (!payload || !payload.fid) {
+			// console.error("Auth Middleware: Token payload invalid or missing fid"); // Removed
+			throw new Error('Invalid token payload');
+		}
+
+		c.set('userFid', payload.fid);
+		// console.log(`Auth Middleware: FID ${payload.fid} authorized and set in context.`); // Removed
 
 	} catch (err) {
-		// Catch potential errors from verifyToken itself (e.g., malformed token)
-		console.error('Auth middleware unexpected error:', err);
-		return c.json({ error: 'Internal server error during authentication.' }, 500);
+		console.error("Auth Middleware: Verification/Decode Error:", err.message); // Keep this error log
+		return c.json({ error: 'Unauthorized: Invalid token.' }, 401);
 	}
+
+	// console.log("Auth Middleware: Proceeding to next handler..."); // Removed
+	await next();
 }; 

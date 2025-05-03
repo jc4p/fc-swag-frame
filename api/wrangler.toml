@@ -19,6 +19,11 @@ binding = "DB"                 # i.e. env.DB
 database_name = "fc_swag"
 database_id = "42264697-0923-4fbc-8c55-bb904eee9ddf"
 
+# R2 Bucket binding
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "swag-images"
+
 # Durable Object bindings
 [[migrations]]
 tag = "v1" # Should be unique for each entry

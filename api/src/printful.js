@@ -164,4 +164,73 @@ export async function getPrintfulProductPrices(productId, apiKey, currency = 'US
     const finalData = initialResult.data;
     finalData.variants = allVariants;
     return finalData;
+}
+
+// New function to fetch mockup templates
+export async function getPrintfulMockupTemplates(productId, apiKey, placement = null) {
+    if (!apiKey) throw new Error('PRINTFUL_API_KEY is not set.');
+
+    const url = new URL(`https://api.printful.com/v2/catalog-products/${productId}/mockup-templates`);
+    if (placement) {
+        url.searchParams.append('placements', placement);
+    }
+    // We might need pagination handling here if a product has many templates
+    // For now, assume the first page is sufficient or Printful returns all for one placement.
+    url.searchParams.append('limit', '100'); // Fetch up to 100 templates
+
+    const headers = {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+    };
+
+    try {
+        const response = await fetch(url.toString(), { method: 'GET', headers });
+        if (!response.ok) {
+            let errorBody = 'Could not read error body';
+            try {
+                errorBody = await response.json();
+            } catch (e) { /* ignore */ }
+            console.error(`Printful API Error (${response.status}) for ${url.pathname}:`, errorBody);
+            throw new Error(`Failed to fetch mockup templates: ${response.status} ${response.statusText}`);
+        }
+        const result = await response.json();
+        return result.data || []; // Return the data array or empty if missing
+    } catch (error) {
+        console.error('Error fetching Printful mockup templates:', error);
+        throw error;
+    }
+}
+
+/**
+ * Downloads an image from a URL.
+ * @param {string} imageUrl The URL of the image to download.
+ * @returns {Promise<{arrayBuffer: ArrayBuffer, contentType: string | null}>} The image data and content type.
+ * @throws {Error} If the download fails or the response is not an image.
+ */
+export async function downloadImage(imageUrl) {
+  try {
+    console.log(`Downloading image: ${imageUrl}`);
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download image ${imageUrl}: ${response.status} ${response.statusText}`);
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.startsWith('image/')) {
+        // Try to infer from URL extension if header is missing/wrong
+        const extension = imageUrl.split('.').pop()?.toLowerCase();
+        if (!['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
+             throw new Error(`Downloaded content from ${imageUrl} is not an image (Content-Type: ${contentType}, URL: ${imageUrl})`);
+        }
+         console.warn(`Missing or invalid image Content-Type (${contentType}) for ${imageUrl}. Proceeding based on extension.`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    console.log(`Downloaded ${imageUrl} (${(arrayBuffer.byteLength / 1024).toFixed(1)} KB)`);
+    return { arrayBuffer, contentType };
+
+  } catch (error) {
+    console.error(`Error in downloadImage for ${imageUrl}:`, error);
+    throw error; // Re-throw the error to be handled by the caller
+  }
 } 
