@@ -283,7 +283,7 @@ export function ProductOptions({ product }) {
      if (isBackgroundClick || isPlaceholderClick) {
         // If no user image is loaded, trigger file input
         if (!userImageAttrs) {
-            console.log("Stage/Placeholder clicked, triggering file input...");
+            logToOverlay("Stage/Placeholder clicked, attempting to trigger file input..."); // <-- Log before click
             fileInputRef.current?.click();
         } else {
             // If image exists, deselect it
@@ -387,6 +387,7 @@ export function ProductOptions({ product }) {
 
   // --- Component Handlers (File Input, Publish) ---
   const handleFileChange = (event) => {
+    logToOverlay("handleFileChange triggered!"); // <-- Log entry into the function
     const file = event.target.files?.[0];
     if (file) {
       logToOverlay(`File Selected: Name=${file.name}, Type=${file.type}, Size=${file.size} bytes`); // <-- Log file details
