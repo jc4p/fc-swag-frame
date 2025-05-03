@@ -6,6 +6,8 @@ import Konva from 'konva'; // Import Konva for methods like Konva.Image.fromURL 
 import useImage from 'use-image'; // Hook for loading images
 import styles from './ProductOptions.module.css';
 import { useDebug } from '@/contexts/DebugContext'; // <-- Add import
+import { useAuth } from '@/contexts/AuthContext'; // <-- Import Auth context hook
+import * as frame from '@farcaster/frame-sdk'; // <-- Import Frame SDK
 
 // --- Constants ---
 const RAW_COST = 14.95;
@@ -90,6 +92,7 @@ const getContrastColor = (hexColor) => {
  */
 export function ProductOptions({ product }) {
   const { logToOverlay } = useDebug(); // <-- Get the logging function
+  const { authToken, userFid, isAuthenticated, isAuthLoading, login } = useAuth(); // <-- Use Auth context
 
   // --- State --- 
   const [selectedColorName, setSelectedColorName] = useState(null);
@@ -107,6 +110,8 @@ export function ProductOptions({ product }) {
   const [isUserImageSelected, setIsUserImageSelected] = useState(false);
   const [isOutOfBounds, setIsOutOfBounds] = useState(false); // <-- Add state for bounds warning
   const [hasBackgroundBeenRemoved, setHasBackgroundBeenRemoved] = useState(false); // <-- New state
+  const [isSigningIn, setIsSigningIn] = useState(false); 
+  const [signInNonce, setSignInNonce] = useState(null); // <-- State for storing nonce
   const [iconPositions, setIconPositions] = useState({ // <-- State for icon positions
       removeBg: { x: 0, y: 0, visible: false },
       removeImg: { x: 0, y: 0, visible: false }
@@ -493,13 +498,109 @@ export function ProductOptions({ product }) {
     event.target.value = '';
   };
 
+  // NEW Effect: Fetch Nonce on Mount
+  useEffect(() => {
+    const fetchNonce = async () => {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+        logToOverlay("Fetching initial nonce...");
+        try {
+            const nonceRes = await fetch(`${apiUrl}/api/auth/nonce`);
+            if (!nonceRes.ok) {
+                throw new Error(`Failed to fetch nonce: ${nonceRes.status}`);
+            }
+            const { nonce } = await nonceRes.json();
+            if (!nonce) {
+                throw new Error('Received empty nonce from server.');
+            }
+            logToOverlay(`Initial nonce fetched: ${nonce.substring(0, 10)}...`);
+            setSignInNonce(nonce);
+        } catch (error) {
+            logToOverlay(`Error fetching initial nonce: ${error.message}`);
+            console.error("Failed to fetch initial nonce:", error);
+            // Handle error - maybe disable sign-in button or show message?
+            // For now, nonce will remain null, preventing sign-in.
+        }
+    };
+
+    fetchNonce();
+  }, [logToOverlay]); // Runs once on mount
+
+  // Refactored Publish Click handler
   const handlePublishClick = async () => {
-    if (!userImageAttrs || !selectedVariant || !product || !stageRef.current) {
+    logToOverlay("Publish button clicked.");
+
+    // Ensure we have the essentials even before checking auth
+    if (!userImageAttrs || !selectedVariant || !product) {
       alert("Please select variant and upload/position an image first.");
       return;
     }
-    setIsLoadingPublish(true); 
 
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+
+    // --- Sign-In Flow (if not authenticated) ---
+    if (!isAuthenticated) {
+        logToOverlay("User not authenticated. Starting Sign-In With Farcaster flow...");
+        setIsSigningIn(true);
+        try {
+            // 1. Check if Nonce is loaded
+            if (!signInNonce) {
+                throw new Error('Sign-in nonce not available. Please try again later.');
+            }
+            logToOverlay(`Using pre-fetched nonce: ${signInNonce.substring(0, 10)}...`);
+
+            // 2. Trigger Frame SDK Sign-In
+            logToOverlay("Calling sdk.actions.signIn...");
+            const signInResult = await frame.sdk.actions.signIn({ nonce: signInNonce }); // <-- Use state nonce
+            logToOverlay(`signIn action completed.`);
+
+            // Check if signInResult is valid (adjust based on actual SDK return type if needed)
+            if (!signInResult || !signInResult.message || !signInResult.signature) {
+                 logToOverlay("Sign-in was cancelled or failed in Frame.");
+                 // Don't throw an error, just stop the process if user cancelled.
+                 setIsSigningIn(false);
+                 return; 
+            }
+
+            logToOverlay("Received signature and message from Frame SDK.");
+
+            // 3. Verify SIWF with backend
+            logToOverlay("Sending SIWF details to backend /auth/signin...");
+            const backendVerifyRes = await fetch(`${apiUrl}/api/auth/signin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: signInResult.message,
+                    signature: signInResult.signature,
+                    nonce: signInNonce // Send nonce back for potential validation
+                }),
+            });
+
+            const backendVerifyData = await backendVerifyRes.json();
+
+            if (!backendVerifyRes.ok || !backendVerifyData.success || !backendVerifyData.token || !backendVerifyData.fid) {
+                throw new Error(`Backend verification failed: ${backendVerifyData.message || 'Unknown error'}`);
+            }
+
+            logToOverlay(`Backend verification successful. Received token for FID: ${backendVerifyData.fid}`);
+
+            // 4. Update Auth Context
+            login(backendVerifyData.token, backendVerifyData.fid);
+            logToOverlay("User successfully signed in and authenticated.");
+            alert("Sign-in successful! You can now publish your design."); // Inform user
+
+        } catch (error) {
+            logToOverlay(`Sign-In Error: ${error.message}`);
+            console.error("Sign-In Flow Error:", error);
+            alert(`Sign-in failed: ${error.message}`);
+        } finally {
+            setIsSigningIn(false);
+        }
+        return;
+    }
+
+    // --- Design Publishing Flow (if authenticated) ---
+    logToOverlay(`User is authenticated (FID: ${userFid}). Proceeding with design publish...`);
+    setIsLoadingPublish(true); 
     try {
         // 1. Get High-Res Dimensions
         const highResWidth = selectedVariant.template_width;
@@ -568,30 +669,31 @@ export function ProductOptions({ product }) {
         formData.append('variant_id', selectedVariant.id.toString());
         formData.append('image', blob, `design-${selectedVariant.id}.png`);
 
-        // 7. Get Auth Token (Placeholder)
-        const authToken = localStorage.getItem('fc-auth-token') || 'YOUR_PLACEHOLDER_TOKEN'; 
-        if (!authToken || authToken === 'YOUR_PLACEHOLDER_TOKEN') {
-             console.warn("Auth token missing/placeholder.");
+        // 7. Get Auth Token (Now from context)
+        if (!authToken) { 
+             // This case shouldn't happen if isAuthenticated is true, but check anyway
+             throw new Error("Authentication token missing unexpectedly.");
         }
+        logToOverlay("Using auth token from context.");
 
-        // 8. Make API Call
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
-        const response = await fetch(`${apiUrl}/designs`, {
+        // 8. Make API Call (Now using context token)
+        const response = await fetch(`${apiUrl}/api/designs`, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${authToken}` },
+            headers: { 'Authorization': `Bearer ${authToken}` }, // <-- Use token from context
             body: formData,
         });
 
-        // 9. Handle Response
+        // 9. Handle Response (Existing)
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ error: 'Unknown API error' }));
             throw new Error(errorData.error || `API Error: ${response.status}`);
         }
         const result = await response.json();
-        console.log("Design published successfully:", result);
-        alert(`Success! Design ID: ${result.designId}`);
+        logToOverlay(`Design published successfully: ${JSON.stringify(result)}`);
+        alert(`Success! Design ID: ${result.designId}`); // TODO: Show success state differently?
 
     } catch (error) {
+        logToOverlay(`Design Publish Error: ${error.message}`);
         console.error("Failed to publish design:", error);
         alert(`Error publishing design: ${error.message}`);
     } finally {
@@ -690,10 +792,20 @@ export function ProductOptions({ product }) {
     (userImageUrl && userImgStatus === 'loading') ||
     isRemovingBackground || 
     trashIconStatus !== 'loaded' || // Add icon loading states
-    removeBgIconStatus !== 'loaded';
+    removeBgIconStatus !== 'loaded' ||
+    isSigningIn || // <-- Add sign-in loading state
+    isAuthLoading; // <-- Add auth loading state
 
   // Calculate placeholder text color
   const placeholderFillColor = getContrastColor(selectedColor?.color_code);
+
+  const publishButtonText = isSigningIn 
+      ? 'Signing In...' 
+      : isLoadingPublish 
+      ? 'Publishing...' 
+      : isAuthenticated 
+      ? 'Publish Design' 
+      : 'Sign In & Publish';
 
   return (
     <div className={styles.optionsContainer}>
@@ -915,7 +1027,16 @@ export function ProductOptions({ product }) {
          {/* Loading Overlay - Updated text */} 
          {isAnyImageLoading && (
             <div className={styles.loadingOverlay}>
-                {isRemovingBackground ? 'Removing Background...' : 'Loading Images...'}
+                {isSigningIn
+                    ? 'Waiting for Sign-In...'
+                    : isRemovingBackground 
+                    ? 'Removing Background...' 
+                    : isLoadingPublish
+                    ? 'Publishing Design...'
+                    : isAuthLoading 
+                    ? 'Checking Auth...'
+                    : 'Loading...' // General loading for images/icons
+                }
             </div>
          )}
          {/* Hidden File Input - Still keep off-screen */}
@@ -989,15 +1110,24 @@ export function ProductOptions({ product }) {
         </div>
 
 
-      {/* Publish Button - Use calculated combined loading state */}
+      {/* Publish Button - Updated text and disable logic */} 
       <div className={styles.actionSection}>
          <button
            className={styles.primaryButton}
            onClick={handlePublishClick}
-           // Disable if publish in progress OR if user image URL exists but hasn't loaded yet
-           disabled={!selectedVariant || !userImageAttrs || !estimatedPrice || isLoadingPublish || (userImageUrl && userImgStatus !== 'loaded')}
+           disabled={
+               !selectedVariant || 
+               !userImageAttrs || 
+               !estimatedPrice || 
+               isLoadingPublish || 
+               isRemovingBackground ||
+               isSigningIn || // Disable during sign-in
+               isAuthLoading || // Disable while checking auth
+               (userImageUrl && userImgStatus !== 'loaded') ||
+               (!isAuthenticated && !signInNonce) // Disable if not logged in AND nonce isn't ready
+            }
           >
-             {isLoadingPublish ? 'Publishing...' : 'Publish Design'} 
+             {publishButtonText} 
          </button>
       </div>
 

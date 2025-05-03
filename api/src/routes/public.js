@@ -160,4 +160,26 @@ publicRoutes.get('/feed', (c) => {
     return c.json({ message: 'Public feed not implemented yet' }, 501);
 });
 
+// NEW: Generate Nonce Endpoint
+publicRoutes.get('/auth/nonce', async (c) => {
+    try {
+        // Generate a secure random nonce (e.g., using Web Crypto API if available in CF Workers)
+        // crypto.randomUUID() is generally available and suitable
+        const nonce = crypto.randomUUID().replace(/-/g, ''); // Remove hyphens for simplicity
+        console.log('Generated nonce:', nonce);
+        return c.json({ nonce });
+    } catch (error) {
+        console.error("Error generating nonce:", error);
+        // Fallback if crypto API isn't available (less secure)
+        try {
+            const fallbackNonce = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            console.warn('Using fallback nonce generation');
+            return c.json({ nonce: fallbackNonce });
+        } catch (fallbackError) {
+             console.error("Fallback nonce generation also failed:", fallbackError);
+             return c.json({ error: 'Failed to generate nonce' }, 500);
+        }
+    }
+});
+
 export default publicRoutes; 

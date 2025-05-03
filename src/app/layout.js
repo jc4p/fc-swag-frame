@@ -2,6 +2,7 @@ import { FrameInit } from "@/components/FrameInit";
 import "./globals.css";
 import { DebugProvider } from "../contexts/DebugContext";
 import DebugOverlay from "../components/DebugOverlay";
+import { AuthProvider } from "../contexts/AuthContext";
 
 export const metadata = {
   title: "FC Swag Frame",
@@ -12,11 +13,13 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <DebugProvider>
-          {children}
-          <FrameInit />
-          {/* <DebugOverlay /> */}
-        </DebugProvider>
+        <AuthProvider>
+          <DebugProvider>
+            {children}
+            <FrameInit />
+            {/* <DebugOverlay /> */}
+          </DebugProvider>
+        </AuthProvider>
       </body>
     </html>
   );
