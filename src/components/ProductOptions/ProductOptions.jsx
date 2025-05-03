@@ -683,13 +683,18 @@ export function ProductOptions({ product }) {
                  Loading Images...
             </div>
          )}
-         {/* Hidden File Input - Add HEIC accept type */}
+         {/* Hidden File Input - Use absolute positioning instead of display:none */}
          <input
            type="file"
            ref={fileInputRef}
            onChange={handleFileChange}
-           accept="image/png, image/jpeg, image/webp, image/heic, image/heif" // <-- Added HEIC/HEIF
-           style={{ display: 'none' }}
+           accept="image/png, image/jpeg, image/webp, image/heic, image/heif"
+           style={{ // Use positioning to hide instead of display:none
+             position: 'absolute',
+             left: '-9999px',
+             top: '-9999px',
+             opacity: 0, // Also make invisible just in case
+           }}
            onClick={(e) => { e.target.value = null }}
          />
        </div>
