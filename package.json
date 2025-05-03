@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@farcaster/frame-sdk": "^0.0.37",
+    "canvas": "^3.0.0-rc3",
     "dotenv": "^16.5.0",
     "konva": "^9.3.20",
     "next": "15.3.1",
