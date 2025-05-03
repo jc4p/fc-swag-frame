@@ -15,7 +15,7 @@ export default function RootLayout({ children }) {
         <DebugProvider>
           {children}
           <FrameInit />
-          <DebugOverlay />
+          {/* <DebugOverlay /> */}
         </DebugProvider>
       </body>
     </html>

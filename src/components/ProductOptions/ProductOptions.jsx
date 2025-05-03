@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback, Fragment } from 'react';
-import { Stage, Layer, Rect, Image, Transformer, Text } from 'react-konva';
+import { Stage, Layer, Rect, Image, Transformer, Text, Circle, Group } from 'react-konva';
 import Konva from 'konva'; // Import Konva for methods like Konva.Image.fromURL if needed, though use-image is preferred
 import useImage from 'use-image'; // Hook for loading images
 import styles from './ProductOptions.module.css';
@@ -11,6 +11,23 @@ import { useDebug } from '@/contexts/DebugContext'; // <-- Add import
 const RAW_COST = 14.95;
 const PLATFORM_FEE = 4.00;
 const DEFAULT_COMMISSION = 25;
+const ICON_SIZE = 24; // Increased size
+const ICON_PADDING = 10; // Increased padding
+const ICON_BG_RADIUS = 15; // Radius for the background circle
+
+// --- SVG Definitions and Helper ---
+const trashSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"> <polyline points="3 6 5 6 21 6"/> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/> <line x1="10" y1="11" x2="10" y2="17"/> <line x1="14" y1="11" x2="14" y2="17"/></svg>`;
+const removeBgSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"> <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/> <path d="M4 6 V18 C4 19.1046 4.89543 20 6 20 H12 V4 H6 C4.89543 4 4 4.89543 4 6 Z" fill="white"/></svg>`;
+
+const svgToDataURL = (svgString) => {
+  const encoded = encodeURIComponent(svgString)
+    .replace(/'/g, '%27')
+    .replace(/"/g, '%22');
+  return `data:image/svg+xml,${encoded}`;
+};
+
+const trashIconDataURL = svgToDataURL(trashSVG);
+const removeBgIconDataURL = svgToDataURL(removeBgSVG);
 
 // --- Helper Functions ---
 
@@ -83,11 +100,17 @@ export function ProductOptions({ product }) {
   const [estimatedPrice, setEstimatedPrice] = useState(null);
   const [artistEarnings, setArtistEarnings] = useState(null);
   const [isLoadingPublish, setIsLoadingPublish] = useState(false); 
+  const [isRemovingBackground, setIsRemovingBackground] = useState(false); // <-- Add state
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const [printAreaRect, setPrintAreaRect] = useState({ x: 0, y: 0, width: 100, height: 100 });
   const [userImageAttrs, setUserImageAttrs] = useState(null);
   const [isUserImageSelected, setIsUserImageSelected] = useState(false);
   const [isOutOfBounds, setIsOutOfBounds] = useState(false); // <-- Add state for bounds warning
+  const [hasBackgroundBeenRemoved, setHasBackgroundBeenRemoved] = useState(false); // <-- New state
+  const [iconPositions, setIconPositions] = useState({ // <-- State for icon positions
+      removeBg: { x: 0, y: 0, visible: false },
+      removeImg: { x: 0, y: 0, visible: false }
+  });
 
   // --- Refs --- 
   const fileInputRef = useRef(null);
@@ -105,6 +128,8 @@ export function ProductOptions({ product }) {
   const [textureImg, textureStatus] = useImage(textureUrl || '', 'anonymous');
   const [templateImg, templateStatus] = useImage(templateImageUrl || '', 'anonymous');
   const [userImg, userImgStatus] = useImage(userImageUrl || '', 'anonymous');
+  const [trashIconImg, trashIconStatus] = useImage(trashIconDataURL); // Load SVGs
+  const [removeBgIconImg, removeBgIconStatus] = useImage(removeBgIconDataURL);
 
   // --- Effect to log userImgStatus changes ---
   useEffect(() => {
@@ -317,6 +342,7 @@ export function ProductOptions({ product }) {
             x: e.target.x(),
             y: e.target.y(),
         });
+        handleUserImageTransform(e.target); // Recalculate icons on drag end
     };
 
     // Update state when transforming ends (REMOVED scale clamping)
@@ -335,7 +361,7 @@ export function ProductOptions({ product }) {
             scaleY: Math.max(0.01, scaleY),
             rotation,
         });
-        // Bounds check handled in effect
+        handleUserImageTransform(node); // Recalculate icons on transform end
     };
 
     // Restore dragBoundFunc to keep image center within print area during drag
@@ -391,12 +417,45 @@ export function ProductOptions({ product }) {
       }
    }, [userImageAttrs, printAreaRect, isOutOfBounds]);
 
-  // --- Component Handlers (File Input, Publish) ---
+  // --- Helper: Calculate Icon Positions ---
+  const calculateIconPositions = useCallback((node) => {
+      if (!node) return { removeBg: { visible: false }, removeImg: { visible: false } };
+
+      const box = node.getClientRect({ relativeTo: node.getLayer() });
+      // Position icons relative to corners, further out
+      const removeBgX = box.x + box.width + ICON_PADDING;
+      const removeBgY = box.y - ICON_PADDING; // Adjusted Y to align top
+      const removeImgX = box.x - ICON_PADDING - ICON_SIZE;
+      const removeImgY = box.y - ICON_PADDING; // Adjusted Y to align top
+
+      return {
+          removeBg: { x: removeBgX, y: removeBgY, visible: true },
+          removeImg: { x: removeImgX, y: removeImgY, visible: true }
+      };
+  }, []); // Dependencies managed via usage
+
+  // --- Effect to Update Icon Positions on Selection/Transform --- 
+  useEffect(() => {
+    const node = userImageRef.current;
+    if (isUserImageSelected && node) {
+        setIconPositions(calculateIconPositions(node));
+    } else {
+        setIconPositions({ removeBg: { visible: false }, removeImg: { visible: false } });
+    }
+  }, [isUserImageSelected, userImageAttrs, calculateIconPositions]); // Update when selection or attrs change
+
+  const handleUserImageTransform = useCallback((node) => { // Called during transform/drag
+      if (node) {
+          setIconPositions(calculateIconPositions(node));
+      }
+  }, [calculateIconPositions]);
+
+  // --- Component Handlers (File Input, Publish, Remove Background, Remove Image) ---
   const handleFileChange = (event) => {
-    logToOverlay("handleFileChange triggered!"); // <-- Log entry into the function
+    logToOverlay("handleFileChange triggered!");
     const file = event.target.files?.[0];
     if (file) {
-      logToOverlay(`File Selected: Name=${file.name}, Type=${file.type}, Size=${file.size} bytes`); // <-- Log file details
+      logToOverlay(`File Selected: Name=${file.name}, Type=${file.type}, Size=${file.size} bytes`);
 
       // Check for HEIC/HEIF specifically
       if (file.type === 'image/heic' || file.type === 'image/heif') {
@@ -406,15 +465,16 @@ export function ProductOptions({ product }) {
       const reader = new FileReader();
 
       reader.onloadstart = () => {
-        logToOverlay(`FileReader: Starting to read ${file.name}`); // <-- Log start
+        logToOverlay(`FileReader: Starting to read ${file.name}`);
       };
 
       reader.onloadend = () => {
-        logToOverlay(`FileReader: Finished reading ${file.name}. Result length: ${reader.result?.length || 0}`); // <-- Log finish
+        logToOverlay(`FileReader: Finished reading ${file.name}. Result length: ${reader.result?.length || 0}`);
         if (reader.result) {
             setUploadedImageDataUrl(reader.result);
-            logToOverlay("FileReader: Set uploadedImageDataUrl state."); // <-- Log state set
-            setUserImageAttrs(null); // Reset attrs when new image uploaded
+            logToOverlay("FileReader: Set uploadedImageDataUrl state.");
+            setUserImageAttrs(null); // Reset attrs
+            setHasBackgroundBeenRemoved(false); // <-- Reset on new file upload
         } else {
             logToOverlay("FileReader Error: onloadend fired but reader.result is empty.");
             alert("Error reading file. The file might be corrupted or in an unsupported format.");
@@ -422,7 +482,7 @@ export function ProductOptions({ product }) {
       };
 
       reader.onerror = (error) => {
-         logToOverlay(`FileReader Error: Failed to read ${file.name}. Error: ${error}`); // <-- Log error
+         logToOverlay(`FileReader Error: Failed to read ${file.name}. Error: ${error}`);
          alert("Could not read the selected file. Please try a different image.");
       };
 
@@ -430,7 +490,7 @@ export function ProductOptions({ product }) {
     } else {
       logToOverlay("File Input: No file selected or event triggered without files.");
     }
-    event.target.value = ''; // Clear input value
+    event.target.value = '';
   };
 
   const handlePublishClick = async () => {
@@ -539,18 +599,98 @@ export function ProductOptions({ product }) {
     }
   };
 
-  // NEW: Handler for removing the image
+  // NEW: Handler for removing the background
+  const handleRemoveBackgroundClick = async () => {
+    if (!uploadedImageDataUrl || isRemovingBackground) {
+      logToOverlay("Remove Background: No image data URL or already processing.");
+      return;
+    }
+    logToOverlay("Remove Background: Starting...");
+    setIsRemovingBackground(true);
+
+    try {
+      // 1. Convert Data URL to Blob
+      const imageBlob = dataURLtoBlob(uploadedImageDataUrl);
+      if (!imageBlob) {
+        throw new Error("Failed to convert image data URL to Blob.");
+      }
+      logToOverlay(`Remove Background: Converted to Blob, size: ${imageBlob.size}, type: ${imageBlob.type}`);
+
+      // 2. Create FormData
+      const formData = new FormData();
+      // Try to determine a reasonable filename
+      const fileExtension = imageBlob.type.split('/')[1] || 'png';
+      const fileName = `image_to_process.${fileExtension}`;
+      formData.append('image', imageBlob, fileName);
+
+      // 3. Call the API endpoint
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''; // Use empty string for relative path
+      const response = await fetch(`${apiUrl}/api/image/remove-background`, {
+        method: 'POST',
+        body: formData,
+        // No Auth header needed as it's public
+      });
+
+      // 4. Handle Response
+      if (!response.ok) {
+        let errorBody = 'Failed to read error response.';
+        try {
+           errorBody = await response.text(); 
+        } catch(e) { /* ignore */ }
+        throw new Error(`API Error ${response.status}: ${errorBody}`);
+      }
+
+      logToOverlay("Remove Background: API call successful. Receiving result blob...");
+      const resultBlob = await response.blob();
+      logToOverlay(`Remove Background: Received result blob, size: ${resultBlob.size}, type: ${resultBlob.type}`);
+
+      // 5. Convert result Blob back to Data URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (reader.result) {
+          logToOverlay("Remove Background: Converted result blob to data URL. Updating state.");
+          setUploadedImageDataUrl(reader.result);
+          setHasBackgroundBeenRemoved(true); // <-- Set state to true
+          // NOTE: Transformer bounds are NOT automatically adjusted after background removal.
+          // The user may need to resize the transformer manually as its boundary 
+          // still corresponds to the original image dimensions, not the new visible content.
+          // Auto-detecting new visual bounds is complex.
+        } else {
+          throw new Error("Failed to read the processed image blob back into a data URL.");
+        }
+        setIsRemovingBackground(false); 
+      };
+      reader.onerror = (error) => {
+        logToOverlay(`Remove Background: FileReader error reading result blob: ${error}`);
+        throw new Error("FileReader failed to read the processed image blob.");
+      };
+      reader.readAsDataURL(resultBlob);
+
+    } catch (error) {
+      logToOverlay(`Remove Background Error: ${error.message}`);
+      console.error("Failed to remove background:", error);
+      alert(`Error removing background: ${error.message}`);
+      setIsRemovingBackground(false);
+    }
+  };
+
+  // Handler for removing the image (now triggered by icon)
   const handleRemoveImage = () => {
-      setUploadedImageDataUrl(null); // This will clear userImg via useImage
-      setUserImageAttrs(null);      // Clear attributes
-      setIsUserImageSelected(false); // Deselect
+      logToOverlay("Remove Image icon clicked.");
+      setUploadedImageDataUrl(null);
+      setUserImageAttrs(null);
+      setIsUserImageSelected(false);
+      setHasBackgroundBeenRemoved(false); // <-- Reset on image removal
   };
 
   // --- JSX Rendering ---
   const isAnyImageLoading = 
     (textureUrl && textureStatus === 'loading') ||
     (templateImageUrl && templateStatus === 'loading') ||
-    (userImageUrl && userImgStatus === 'loading');
+    (userImageUrl && userImgStatus === 'loading') ||
+    isRemovingBackground || 
+    trashIconStatus !== 'loaded' || // Add icon loading states
+    removeBgIconStatus !== 'loaded';
 
   // Calculate placeholder text color
   const placeholderFillColor = getContrastColor(selectedColor?.color_code);
@@ -623,23 +763,25 @@ export function ProductOptions({ product }) {
                         />
                     )}
                     
-                    {/* User Uploaded Image - Add dragBoundFunc back */}
+                    {/* User Uploaded Image - Add onTransform and onDragMove */}
                     {userImageUrl && userImageAttrs && userImgStatus === 'loaded' && (
                        <Image 
-                          ref={userImageRef} 
-                          {...userImageAttrs} 
-                          onDragEnd={handleDragEnd} 
-                          onTransformEnd={handleTransformEnd} 
-                          dragBoundFunc={dragBoundFunc} // <-- Apply drag bounds
-                          onClick={() => setIsUserImageSelected(true)} 
-                          onTap={() => setIsUserImageSelected(true)} 
-                          onError={(e) => { // <-- Add onError handler
+                          ref={userImageRef}
+                          {...userImageAttrs}
+                          onDragEnd={handleDragEnd}
+                          onTransformEnd={handleTransformEnd}
+                          dragBoundFunc={dragBoundFunc}
+                          onClick={() => setIsUserImageSelected(true)}
+                          onTap={() => setIsUserImageSelected(true)}
+                          onError={(e) => {
                             logToOverlay(`Konva Image Error: Failed to render user image. Error event: ${JSON.stringify(e)}`);
                             console.error("Konva Image Rendering Error:", e);
-                            // Optionally clear the image state here if it fails to render
-                            // setUploadedImageDataUrl(null); 
-                            // setUserImageAttrs(null);
                           }}
+                          draggable={!isRemovingBackground && userImageAttrs.draggable}
+                          listening={!isRemovingBackground}
+                          // Update icon positions LIVE during drag/transform
+                          onDragMove={(e) => handleUserImageTransform(e.target)}
+                          onTransform={(e) => handleUserImageTransform(e.target)}
                        />
                     )}
   
@@ -659,20 +801,91 @@ export function ProductOptions({ product }) {
                        />
                     )}
 
-                    {/* Transformer - Set keepRatio */}
+                    {/* Transformer */} 
                     {isUserImageSelected && userImageAttrs && (
                         <Transformer 
-                            ref={transformerRef} 
-                            keepRatio={true} // <-- Enforce aspect ratio
-                            // Optionally limit handles: enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
+                            ref={transformerRef}
+                            keepRatio={true}
                             boundBoxFunc={(oldBox, newBox) => {
                                 if (newBox.width < 5 || newBox.height < 5) {
                                     return oldBox;
                                 }
                                 return newBox;
                             }}
+                            visible={!isRemovingBackground}
                         />
                     )}
+
+                    {/* Action Icons - Group for easier management */} 
+                    {isUserImageSelected && userImageAttrs && iconPositions.removeImg.visible && (
+                         <Fragment>
+                            {/* Remove Image Icon */} 
+                            {trashIconStatus === 'loaded' && !isRemovingBackground && (
+                                <Group
+                                   x={iconPositions.removeImg.x}
+                                   y={iconPositions.removeImg.y}
+                                   width={ICON_SIZE}
+                                   height={ICON_SIZE}
+                                   onClick={handleRemoveImage}
+                                   onTap={handleRemoveImage}
+                                   onMouseEnter={e => { e.target.getStage().container().style.cursor = 'pointer'; }}
+                                   onMouseLeave={e => { e.target.getStage().container().style.cursor = 'default'; }}
+                                >
+                                   {/* Invisible Rect for Hit Detection */} 
+                                   <Rect 
+                                      width={ICON_SIZE + ICON_PADDING} // Make hit area slightly larger than icon
+                                      height={ICON_SIZE + ICON_PADDING}
+                                      fill="transparent" // Invisible
+                                      offsetX={(ICON_SIZE + ICON_PADDING) / 2} // Center hit rect in group
+                                      offsetY={(ICON_SIZE + ICON_PADDING) / 2}
+                                      x={ICON_SIZE / 2} // Position rect at group center
+                                      y={ICON_SIZE / 2}
+                                   />
+                                   <Image 
+                                        image={trashIconImg}
+                                        width={ICON_SIZE}
+                                        height={ICON_SIZE}
+                                        // Icon is still positioned relative to group origin (0,0)
+                                        listening={false} // Click handled by group
+                                   />
+                                </Group>
+                             )}
+
+                            {/* Remove Background Icon - Conditionally render */} 
+                            {removeBgIconStatus === 'loaded' && !isRemovingBackground && !hasBackgroundBeenRemoved && (
+                                <Group
+                                    x={iconPositions.removeBg.x}
+                                    y={iconPositions.removeBg.y}
+                                    width={ICON_SIZE}
+                                    height={ICON_SIZE}
+                                    // No offset needed
+                                    onClick={handleRemoveBackgroundClick}
+                                    onTap={handleRemoveBackgroundClick}
+                                    onMouseEnter={e => { e.target.getStage().container().style.cursor = 'pointer'; }}
+                                    onMouseLeave={e => { e.target.getStage().container().style.cursor = 'default'; }}
+                                >
+                                    {/* Invisible Rect for Hit Detection */} 
+                                    <Rect 
+                                        width={ICON_SIZE + ICON_PADDING}
+                                        height={ICON_SIZE + ICON_PADDING}
+                                        fill="transparent"
+                                        offsetX={(ICON_SIZE + ICON_PADDING) / 2}
+                                        offsetY={(ICON_SIZE + ICON_PADDING) / 2}
+                                        x={ICON_SIZE / 2}
+                                        y={ICON_SIZE / 2}
+                                    />
+                                    <Image 
+                                        image={removeBgIconImg}
+                                        width={ICON_SIZE}
+                                        height={ICON_SIZE}
+                                        // Icon is still positioned relative to group origin (0,0)
+                                        listening={false}
+                                    />
+                                </Group>
+                             )}
+                         </Fragment>
+                    )}
+
                   </Fragment>
               </Layer>{/* End Interactive Layer */}
           </Stage>
@@ -699,10 +912,10 @@ export function ProductOptions({ product }) {
             </label>
           )}
 
-         {/* Loading Overlay - Use calculated combined loading state */}
+         {/* Loading Overlay - Updated text */} 
          {isAnyImageLoading && (
             <div className={styles.loadingOverlay}>
-                 Loading Images...
+                {isRemovingBackground ? 'Removing Background...' : 'Loading Images...'}
             </div>
          )}
          {/* Hidden File Input - Still keep off-screen */}
@@ -725,13 +938,6 @@ export function ProductOptions({ product }) {
        {/* Out of Bounds Warning Text */}
        {isOutOfBounds && (
            <p className={styles.warningText}>Image is out of bounds and will be clipped.</p>
-       )}
-
-       {/* Add Remove Image Button */}
-       {userImageAttrs && (
-           <button onClick={handleRemoveImage} className={styles.secondaryButton}> 
-               Remove Image
-           </button>
        )}
 
        {/* Product Name & Base Price */}

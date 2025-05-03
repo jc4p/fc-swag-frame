@@ -7,6 +7,7 @@ import protectedRoutes from './routes/protected';
 import adminRoutes from './routes/admin';
 import webhookRoutes from './routes/webhooks';
 import websocketRoutes from './routes/websockets';
+import imageUtils from './routes/imageUtils';
 
 // Import Scheduled Handler and DO Exports
 import { handleScheduled } from './scheduled'; 
@@ -43,7 +44,8 @@ app.route('/api/admin', adminRoutes);      // Handles /api/admin/*
 app.route('/api/webhooks', webhookRoutes); // Handles /api/webhooks/*
 app.route('/api/ws', websocketRoutes);     // Handles /api/ws/*
 
-// Register broader /api routes (protected middleware is applied within protectedRoutes)
+// Register broader /api routes
+app.route('/api/image', imageUtils);      // <-- Register public image utils
 app.route('/api', publicRoutes);         // Handles public /api/auth/signin, /api/products, /api/feed
 app.route('/api', protectedRoutes);      // Handles protected /api/designs, /api/orders
 
