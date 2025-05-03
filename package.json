@@ -11,9 +11,12 @@
   "dependencies": {
     "@farcaster/frame-sdk": "^0.0.37",
     "dotenv": "^16.5.0",
+    "konva": "^9.3.20",
     "next": "15.3.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-konva": "^19.0.3",
+    "use-image": "^1.1.1",
     "viem": "^2.28.3"
   }
 }

@@ -4,47 +4,47 @@
   gap: var(--space-md);
 }
 
-/* Integrated Preview/Upload Area */
-.previewUploadSection {
-  order: -1; /* Move to top on mobile */
+/* NEW: Styles for the container holding the canvas */
+.previewContainer {
+  order: -1;
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  /* Aspect ratio is set inline via style prop */
+  /* height: auto; /* Height is determined by width + aspect-ratio */
+  margin-left: auto;
+  margin-right: auto;
+  border: 1px solid var(--color-border);
+  background-color: #f0f0f0; /* Fallback background */
+  cursor: pointer;
+  overflow: hidden; /* Ensure canvas doesn't overflow container */
+}
+
+/* Styles for the canvas element itself */
+.previewCanvas {
+  display: block;
+  position: absolute; /* Position absolutely within the container */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%; /* Fill the container */
+  /* The actual drawing resolution (canvas.width/height) is set in JS */
+}
+
+/* NEW: Loading overlay style */
+.loadingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--color-bg-alt);
-  border: 2px dashed var(--color-border);
-  border-radius: var(--radius-md);
-  width: 100%;
-  max-width: 400px;
-  min-height: 250px;
-  margin-left: auto;
-  margin-right: auto;
-  cursor: pointer;
-  transition: border-color 0.2s ease;
-  overflow: hidden;
-  position: relative;
-}
-
-.previewUploadSection:hover {
-  border-color: var(--color-accent);
-}
-
-.uploadPlaceholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-sm);
-  color: var(--color-secondary);
-  text-align: center;
-}
-
-.uploadIcon {
-  font-size: 2rem; /* Make icon larger */
-}
-
-.previewImage {
-  width: 100%;
-  height: 100%;
-  object-fit: cover; /* Cover the area, might crop */
+  font-weight: bold;
+  color: #333;
+  z-index: 10;
 }
 
 /* Product Name & Starting Price Section */
@@ -190,7 +190,7 @@
       /* No change needed here if parent grid handles columns */
   }
 
-  .previewUploadSection {
+  .previewContainer {
      order: 0; /* Reset order for desktop layout */
   }
 
@@ -321,9 +321,76 @@
       /* No change needed here if parent grid handles columns */
   }
 
-  .previewUploadSection {
+  .previewContainer {
      order: 0; /* Reset order for desktop layout */
   }
 
   /* Other elements will flow naturally */
+}
+
+/* Styles for Preview/Upload Section */
+.previewContainer {
+  position: relative; /* Needed for absolute positioning of children overlays */
+  width: 100%;
+  /* height will be set dynamically via JS */
+  min-height: 200px;
+  cursor: pointer;
+  overflow: hidden;
+  border: 1px solid #eee;
+  /* background-color is now set inline */
+  /* background-image is now set inline */
+  /* background-size, repeat, position are set inline */
+  margin-bottom: 1rem;
+  display: flex; /* Still useful for centering placeholder */
+  align-items: center;
+  justify-content: center;
+}
+
+/* Style for the uploaded image overlay */
+.uploadedImageOverlay {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  /* position, top, left, width, height, object-fit set by JS inline style */
+  /* z-index is now set inline */
+  pointer-events: none;
+}
+
+/* Placeholder styling */
+.uploadPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--color-secondary);
+  text-align: center;
+  /* z-index is set inline */
+  pointer-events: none;
+}
+
+/* NEW: Warning text style */
+.warningText {
+    color: var(--color-error, #d32f2f); /* Use error color variable or fallback */
+    font-size: 0.875rem;
+    text-align: center;
+    margin-top: var(--space-xs);
+    margin-bottom: var(--space-sm);
+}
+
+/* NEW: Style for secondary/remove button */
+.secondaryButton {
+  background-color: transparent;
+  color: var(--color-secondary);
+  border: 1px solid var(--color-border);
+  padding: var(--space-sm) var(--space-md);
+  font-weight: 500;
+  width: auto; /* Don't force full width */
+  display: block; /* Or inline-block */
+  margin: var(--space-sm) auto; /* Center if needed */
+  border-radius: var(--radius-md);
+}
+
+.secondaryButton:hover:not(:disabled) {
+  background-color: var(--color-bg-alt);
+  border-color: var(--color-secondary);
 } 

@@ -1,5 +1,7 @@
 import { getProducts } from '@/lib/api';
-import { ProductOptions } from '@/components/ProductOptions/ProductOptions';
+// import { ProductOptions } from '@/components/ProductOptions/ProductOptions'; // Remove static import
+// import dynamic from 'next/dynamic'; // Remove dynamic import
+import { ProductOptionsLoader } from '@/components/ProductOptions/ProductOptionsLoader'; // Import the new loader component
 import styles from './page.module.css'; // Import page-specific styles
 
 // Define Frame metadata specifically for this page
@@ -69,7 +71,7 @@ export default async function DesignPage() {
 
           {/* Product Options Client Component - Takes full width on mobile now */}
           <div className={styles.optionsArea}>
-             <ProductOptions
+             <ProductOptionsLoader
                product={product}
              />
           </div>
