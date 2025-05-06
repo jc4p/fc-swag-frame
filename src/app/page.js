@@ -1,7 +1,7 @@
 import { getProducts } from '@/lib/api';
 // import { ProductOptions } from '@/components/ProductOptions/ProductOptions'; // Remove static import
 // import dynamic from 'next/dynamic'; // Remove dynamic import
-import { ProductOptionsLoader } from '@/components/ProductOptions/ProductOptionsLoader'; // Import the new loader component
+import { ProductSelectorAndEditor } from '@/components/ProductSelector/ProductSelectorAndEditor'; // Import the new component
 import styles from './page.module.css'; // Import page-specific styles
 
 // Define Frame metadata specifically for this page
@@ -41,9 +41,8 @@ export default async function DesignPage() {
     // Optionally, you could implement retries or fallback data here
   }
 
-  // For MVP, we assume there's at least one product (the seeded T-shirt)
-  // In a real app, handle the case where products array might be empty even without an error
-  const product = products.length > 0 ? products[0] : null;
+  // The ProductSelectorAndEditor component will handle error display and no product states.
+  // It will also handle the case of a single product.
 
   return (
     // Use the container utility class from globals.css
@@ -52,31 +51,8 @@ export default async function DesignPage() {
         <h1 className={styles.mainHeading}>FC SWAG</h1>
       </div>
 
-      {error && (
-        <div className={styles.errorSection}>
-          <p>{error}</p>
-        </div>
-      )}
-
-      {!error && !product && (
-         <div className={styles.infoSection}>
-           <p>No products currently available. Check back soon!</p>
-         </div>
-      )}
-
-      {product && (
-        <div className={styles.designerGrid}>
-          {/* Preview Area removed, will be handled inside ProductOptions */}
-          {/* <div className={styles.previewArea}> ... </div> */}
-
-          {/* Product Options Client Component - Takes full width on mobile now */}
-          <div className={styles.optionsArea}>
-             <ProductOptionsLoader
-               product={product}
-             />
-          </div>
-        </div>
-      )}
+      {/* Render the new component, passing products and any error */}
+      <ProductSelectorAndEditor products={products} error={error} />
     </main>
   );
 }

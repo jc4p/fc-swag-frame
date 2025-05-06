@@ -9,6 +9,10 @@ import { useDebug } from '@/contexts/DebugContext'; // <-- Add import
 import { useAuth } from '@/contexts/AuthContext'; // <-- Import Auth context hook
 import * as frame from '@farcaster/frame-sdk'; // <-- Import Frame SDK
 
+// Import SVG files as URLs for use-image
+import trashIconUrl from '@/assets/icons/trash.svg';
+import removeBgIconUrl from '@/assets/icons/remove-bg.svg';
+
 // --- Constants ---
 const RAW_COST = 14.95;
 const PLATFORM_FEE = 4.00;
@@ -17,35 +21,7 @@ const ICON_SIZE = 24; // Increased size
 const ICON_PADDING = 10; // Increased padding
 const ICON_BG_RADIUS = 15; // Radius for the background circle
 
-// --- SVG Definitions and Helper ---
-const trashSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"> <polyline points="3 6 5 6 21 6"/> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/> <line x1="10" y1="11" x2="10" y2="17"/> <line x1="14" y1="11" x2="14" y2="17"/></svg>`;
-const removeBgSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"> <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/> <path d="M4 6 V18 C4 19.1046 4.89543 20 6 20 H12 V4 H6 C4.89543 4 4 4.89543 4 6 Z" fill="white"/></svg>`;
-
-const svgToDataURL = (svgString) => {
-  const encoded = encodeURIComponent(svgString)
-    .replace(/'/g, '%27')
-    .replace(/"/g, '%22');
-  return `data:image/svg+xml,${encoded}`;
-};
-
-const trashIconDataURL = svgToDataURL(trashSVG);
-const removeBgIconDataURL = svgToDataURL(removeBgSVG);
-
 // --- Helper Functions ---
-
-// Keep loadImage for potential use, though Fabric might handle some loading
-const loadImage = (src) => {
-  return new Promise((resolve, reject) => {
-    if (!src) {
-      resolve(null); // Resolve with null if no src is provided
-      return;
-    }
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = (err) => reject(err);
-    img.src = src;
-  });
-};
 
 // NEW: Convert Data URL to Blob
 const dataURLtoBlob = (dataurl) => {
@@ -90,7 +66,7 @@ const getContrastColor = (hexColor) => {
 /**
  * Renders interactive options, handles image upload/manipulation via Konva.js, and publishing.
  */
-export function ProductOptions({ product }) {
+export function OptionsShirt({ product }) {
   const { logToOverlay } = useDebug(); // <-- Get the logging function
   const { authToken, userFid, isAuthenticated, isAuthLoading, login } = useAuth(); // <-- Use Auth context
 
@@ -129,12 +105,11 @@ export function ProductOptions({ product }) {
   const templateImageUrl = selectedVariant?.template_image_url;
   const userImageUrl = uploadedImageDataUrl;
 
-  // Pass empty string if URL is null/undefined, but check status conditionally later
   const [textureImg, textureStatus] = useImage(textureUrl || '', 'anonymous');
   const [templateImg, templateStatus] = useImage(templateImageUrl || '', 'anonymous');
   const [userImg, userImgStatus] = useImage(userImageUrl || '', 'anonymous');
-  const [trashIconImg, trashIconStatus] = useImage(trashIconDataURL); // Load SVGs
-  const [removeBgIconImg, removeBgIconStatus] = useImage(removeBgIconDataURL);
+  const [trashIconImg, trashIconStatus] = useImage(trashIconUrl.src);
+  const [removeBgIconImg, removeBgIconStatus] = useImage(removeBgIconUrl.src);
 
   // --- Effect to log userImgStatus changes ---
   useEffect(() => {
@@ -301,40 +276,52 @@ export function ProductOptions({ product }) {
 
    // --- Event Handlers for Konva/Interaction --- 
 
-   // Handle click on stage to deselect OR trigger upload
    const handleStageClick = (e) => {
      const stage = e.target.getStage();
      if (!stage) return;
 
-     // If click is on the stage background OR the placeholder text
-     const isBackgroundClick = e.target === stage;
-     const isPlaceholderClick = e.target.attrs.id === 'uploadPlaceholderText'; 
+     const target = e.target;
 
-     if (isBackgroundClick) { // Only handle deselect on background click now
-         // If image exists, deselect it
+     // If click is on the stage background
+     if (target === stage) {
          if (userImageAttrs) { 
-             console.log("Stage/Placeholder clicked, deselecting image.");
+             console.log("Stage background clicked, deselecting image.");
              setIsUserImageSelected(false);
          }
          return;
      }
      
-     // Check if the clicked target is the placeholder text - clicking the label should handle upload now
-     // If it IS the placeholder text, do nothing here, let the label handle it.
-     if (isPlaceholderClick) {
+     // If click is on the placeholder text itself, let the label handle the upload trigger.
+     if (target.attrs.id === 'uploadPlaceholderText') {
+       console.log("Placeholder text clicked, deferring to label for upload.");
        return; 
      }
 
      // Check if the clicked target is the user image or its transformer
-     const clickedOnTransformer = e.target.getParent()?.className === 'Transformer';
-     if (e.target.attrs.id === 'userImage' || clickedOnTransformer) {
+     let clickedOnUserImage = target.attrs.id === 'userImage';
+     let parentNode = target.getParent();
+     let clickedOnTransformer = false;
+
+     // Traverse up to two levels for transformer parts, as transformer itself is a Group
+     if (parentNode) {
+        if (parentNode.className === 'Transformer') {
+            clickedOnTransformer = true;
+        } else {
+            const grandparentNode = parentNode.getParent();
+            if (grandparentNode && grandparentNode.className === 'Transformer') {
+                clickedOnTransformer = true;
+            }
+        }
+     }
+
+     if (clickedOnUserImage || clickedOnTransformer) {
          console.log("User image or transformer clicked, selecting.");
-         setIsUserImageSelected(true); // Ensure selected if image/transformer clicked
+         setIsUserImageSelected(true);
      } else {
-          // If not the background, not placeholder, not user image/transformer, likely the print area rect
-          // Deselect if needed
+          // If not the background, not placeholder, not user image/transformer
+          // This could be the print area rect or another element. Deselect if an image is present.
           if (userImageAttrs) { 
-             console.log("Clicked on other element (e.g., print area), deselecting.");
+             console.log("Clicked on other interactive element, deselecting user image.");
              setIsUserImageSelected(false);
           }
      }
@@ -826,36 +813,33 @@ export function ProductOptions({ product }) {
           >
               {/* Layer for Background Elements - Use Fragment to avoid whitespace issues */}
               <Layer name="backgroundLayer" listening={false}>
-                  <Fragment>
-                    {/* Background Color Rect */}
-                    <Rect
-                        x={0}
-                        y={0}
-                        width={stageSize.width}
-                        height={stageSize.height}
-                        fill={selectedColor?.color_code || '#f0f0f0'}
-                    />
-                    {/* Texture Image - Only render if loaded */}
-                    {textureUrl && textureImg && textureStatus === 'loaded' && (
-                        <Image
-                            image={textureImg}
-                            x={0}
-                            y={0}
-                            width={stageSize.width}
-                            height={stageSize.height}
-                        />
-                    )}
-                    {/* Template Image - Only render if loaded */}
-                    {templateImageUrl && templateImg && templateStatus === 'loaded' && (
-                        <Image
-                            image={templateImg}
-                            x={0}
-                            y={0}
-                            width={stageSize.width}
-                            height={stageSize.height}
-                        />
-                    )}
-                 </Fragment>
+                  <Rect
+                      x={0}
+                      y={0}
+                      width={stageSize.width}
+                      height={stageSize.height}
+                      fill={selectedColor?.color_code || '#f0f0f0'}
+                  />
+                  {/* Texture Image - Only render if loaded */}
+                  {textureUrl && textureImg && textureStatus === 'loaded' && (
+                      <Image
+                          image={textureImg}
+                          x={0}
+                          y={0}
+                          width={stageSize.width}
+                          height={stageSize.height}
+                      />
+                  )}
+                  {/* Template Image - Only render if loaded */}
+                  {templateImageUrl && templateImg && templateStatus === 'loaded' && (
+                      <Image
+                          image={templateImg}
+                          x={0}
+                          y={0}
+                          width={stageSize.width}
+                          height={stageSize.height}
+                      />
+                  )}
               </Layer>{/* End Background Layer */}
 
               {/* Layer for Interactive Elements - Use Fragment */}
