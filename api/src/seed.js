@@ -39,33 +39,42 @@ export async function seedProductData(env, productId, targetColors) {
         return { success: false, message: 'Missing required environment configuration for seeding.' };
     }
 
-    const targetColorsLower = targetColors.map(c => c.toLowerCase());
+    const targetColorsLower = targetColors ? targetColors.map(c => c.toLowerCase()) : []; // Ensure array even if null/undefined
     const DEFAULT_INVENTORY = 100; // Assign this if Printful says 'in stock'
-    const TARGET_TECHNIQUE = 'dtg';
+    const TARGET_TECHNIQUE = 'dtg'; // This might need adjustment for non-DTG products like stickers (digital)
     const TARGET_REGIONS = ['usa', 'europe'];
-    const TARGET_PLACEMENT = 'front';
 
     try {
-        // 1. Fetch data from Printful
-        console.log(`Fetching data for Printful product ${productId}...`);
-        const [productData, allVariants, allAvailability, pricingData, mockupTemplates] = await Promise.all([
-            getPrintfulProduct(productId, apiKey),
+        // 1. Fetch Product data first to determine type and placement
+        console.log(`Fetching product data for Printful product ${productId}...`);
+        const productData = await getPrintfulProduct(productId, apiKey);
+        const productName = productData.data?.name;
+        const productType = productData.data?.type; // e.g., 'T-SHIRT', 'STICKER'
+        const productTechniqueKey = productData.data?.techniques?.find(t => t.is_default)?.key || 'digital'; // Use default or fallback
+        
+        if (!productName || !productType) {
+            return { success: false, message: `Product ${productId} not found or critical data (name, type) is missing.` };
+        }
+        console.log(`Fetched product: ${productName} (Type: ${productType}, Default Technique: ${productTechniqueKey})`);
+
+        // Determine the placement to fetch templates for
+        const placementToFetch = productType === 'STICKER' ? 'default' : 'front';
+        console.log(`Using placement '${placementToFetch}' for fetching templates based on product type.`);
+
+        // Fetch remaining data
+        console.log(`Fetching variants, availability, prices, and templates for Printful product ${productId}...`);
+        const [allVariants, allAvailability, pricingData, mockupTemplates] = await Promise.all([
             getPrintfulProductVariants(productId, apiKey),
             getPrintfulProductAvailability(productId, apiKey),
             getPrintfulProductPrices(productId, apiKey, 'USD'),
-            getPrintfulMockupTemplates(productId, apiKey, TARGET_PLACEMENT)
+            getPrintfulMockupTemplates(productId, apiKey, placementToFetch) // Use determined placement
         ]);
-        console.log(`Fetched Printful data: ${allVariants.length} variants, ${mockupTemplates.length} templates for ${TARGET_PLACEMENT}.`);
+        console.log(`Fetched Printful data: ${allVariants.length} variants, ${mockupTemplates.length} templates for ${placementToFetch}.`);
 
-        const productName = productData.data?.name;
-        if (!productName) {
-            return { success: false, message: `Product ${productId} not found or name is missing.` };
-        }
-        console.log(`Fetched product: ${productName}`);
         console.log(`Fetched ${allVariants.length} variants.`);
         console.log(`Fetched availability for ${allAvailability.length} entries.`);
         console.log(`Fetched pricing data.`);
-        console.log(`Fetched ${mockupTemplates.length} mockup templates for 'front'.`);
+        console.log(`Fetched ${mockupTemplates.length} mockup templates for '${placementToFetch}'.`);
 
         // --- Process Mockup Templates & Upload Images ---
         let commonTemplateData = null;
@@ -157,41 +166,38 @@ export async function seedProductData(env, productId, targetColors) {
             console.log(`Mapped ${Object.keys(variantTextureR2UrlMap).length} variants with R2 texture URLs.`);
 
         } else {
-            console.warn(`No mockup templates found for product ${productId}, placement ${TARGET_PLACEMENT}. Template fields will be null.`);
+            console.warn(`No mockup templates found for product ${productId}, placement ${placementToFetch}. Template fields will be null.`);
         }
         // -------------------------------------------
 
-        // Create a map for quick availability lookup: variantId -> { availabilityStatus, ... }
+        // Create availability map - adjust technique based on product?
+        // Using productTechniqueKey fetched earlier instead of hardcoded TARGET_TECHNIQUE
         const availabilityMap = allAvailability.reduce((map, avail) => {
-            // Find the availability data specifically for the DTG technique
-            const dtgTechniqueAvailability = avail.techniques?.find(t => t.technique === TARGET_TECHNIQUE);
-            if (dtgTechniqueAvailability) {
-                // Check stock in target regions
-                const stockInfo = dtgTechniqueAvailability.selling_regions?.find(r => TARGET_REGIONS.includes(r.name));
-                // Consider 'in stock' if available in *any* target region
-                const isInStock = dtgTechniqueAvailability.selling_regions?.some(r => TARGET_REGIONS.includes(r.name) && r.availability === 'in stock');
+            const techniqueAvailability = avail.techniques?.find(t => t.technique === productTechniqueKey);
+            if (techniqueAvailability) {
+                const isInStock = techniqueAvailability.selling_regions?.some(r => TARGET_REGIONS.includes(r.name) && r.availability === 'in stock');
                 map[avail.catalog_variant_id] = {
-                    isAvailable: true, // Available via DTG somewhere
+                    isAvailable: true,
                     isInStock: isInStock
                 };
             }
             return map;
         }, {});
 
-        // ---> Create price map for DTG technique
+        // Create price map - adjust technique based on product?
+        // Using productTechniqueKey instead of hardcoded TARGET_TECHNIQUE
         const priceMap = {};
         if (pricingData && pricingData.variants) {
             pricingData.variants.forEach(variantPriceInfo => {
-                const dtgTechnique = variantPriceInfo.techniques?.find(t => t.technique_key === TARGET_TECHNIQUE);
-                if (dtgTechnique && dtgTechnique.price) {
-                    priceMap[variantPriceInfo.id] = dtgTechnique.price; // Store price string
+                const techniquePrice = variantPriceInfo.techniques?.find(t => t.technique_key === productTechniqueKey);
+                if (techniquePrice && techniquePrice.price) {
+                    priceMap[variantPriceInfo.id] = techniquePrice.price;
                 }
             });
-            console.log(`Created price map for ${Object.keys(priceMap).length} variants.`);
+            console.log(`Created price map for ${Object.keys(priceMap).length} variants using technique '${productTechniqueKey}'.`);
         } else {
             console.warn(`No pricing data or variants found in pricing response for product ${productId}`);
         }
-        // <---
 
         // ---> ADDED: Truncate Name at first '|'
         let processedProductName = productName;
@@ -202,27 +208,40 @@ export async function seedProductData(env, productId, targetColors) {
         // <---
 
         // 2. Process and Filter Variants
-        // ---> ADDED: Define allowed sizes
-        const allowedSizes = ['S', 'M', 'L', 'XL'];
-        // <---
+        const apparelSizes = ['S', 'M', 'L', 'XL']; // Sizes typically for apparel
+        console.log(`Filtering variants. Target Colors: ${targetColorsLower.length > 0 ? targetColorsLower.join(', ') : '[All]'}. Applying size filter only for non-sticker types.`);
+        
         const filteredVariants = allVariants.filter(variant => {
-            const colorNameLower = variant.color?.toLowerCase();
-            // ---> MODIFIED: Filter by allowedSizes
-            return colorNameLower && variant.size && targetColorsLower.includes(colorNameLower) && allowedSizes.includes(variant.size) && availabilityMap[variant.id]?.isAvailable;
-            // <---
+            // Availability Check (required for all)
+            const isAvailable = availabilityMap[variant.id]?.isAvailable;
+            if (!isAvailable) return false;
+
+            // Color Filter (only if targetColors specified)
+            if (targetColorsLower.length > 0) {
+                const colorNameLower = variant.color?.toLowerCase();
+                if (!colorNameLower || !targetColorsLower.includes(colorNameLower)) {
+                    return false;
+                }
+            }
+
+            // Size Filter (only for non-sticker types, using apparelSizes for now)
+            if (productType !== 'STICKER') {
+                 if (!variant.size || !apparelSizes.includes(variant.size)) {
+                     return false;
+                 }
+            }
+            // If we passed all applicable filters, include the variant
+            return true;
         }).map(variant => ({
             printful_variant_id: variant.id,
             printful_product_id: variant.catalog_product_id,
             size: variant.size,
             color_name: variant.color,
             color_code: variant.color_code,
-            // ---> MODIFIED: Parse price to float or store null
             printful_price: priceMap[variant.id] ? parseFloat(priceMap[variant.id]) : null,
             inventory_count: availabilityMap[variant.id]?.isInStock ? DEFAULT_INVENTORY : 0,
-            // --- Use R2 URLs ---
-            template_image_url: commonTemplateData?.template_image_url || null,       // R2 URL or null
-            template_texture_url: variantTextureR2UrlMap[variant.id] || null,         // R2 URL or null
-            // --- Dimensions remain the same ---
+            template_image_url: commonTemplateData?.template_image_url || null,
+            template_texture_url: variantTextureR2UrlMap[variant.id] || null,
             template_width: commonTemplateData?.template_width || null,
             template_height: commonTemplateData?.template_height || null,
             print_area_width: commonTemplateData?.print_area_width || null,
@@ -233,21 +252,24 @@ export async function seedProductData(env, productId, targetColors) {
         }));
 
         if (filteredVariants.length === 0) {
-            return { success: false, message: `No variants found matching criteria for product ${productId}.` };
+            // Add more context to the error message
+            return { success: false, message: `No variants found matching criteria for product ${productId} (Type: ${productType}). Check availability, color filters (if used), and size filters (if applicable).` };
         }
         console.log(`Found ${filteredVariants.length} variants to seed after filtering.`);
 
         // 3. Prepare for D1
-        // ---> MODIFIED: Generate slug, hardcode if productId is 586
+        // Slug generation - Make it more generic?
+        // Let's use productId in slug for non-586 cases for now
         let productSlug;
         if (productId.toString() === '586') {
             productSlug = 'unisex-t-shirt';
             console.log(`Using hardcoded slug '${productSlug}' for Printful Product ID ${productId}`);
         } else {
-            productSlug = generateSlug(processedProductName); // Use processed name for slug generation
+            // Generic slug: type-id or name-id
+            productSlug = generateSlug(`${productType}-${productId}`); // Use type and ID for uniqueness
+            console.log(`Generated slug '${productSlug}' for Printful Product ID ${productId}`);
         }
-        // <---
-
+        
         const productInsertStmt = db.prepare(
             'INSERT INTO products (name, slug, printful_product_id, status) VALUES (?, ?, ?, ?) ON CONFLICT(printful_product_id) DO UPDATE SET name=excluded.name, slug=excluded.slug, status=excluded.status, updated_at=CURRENT_TIMESTAMP RETURNING id'
         );

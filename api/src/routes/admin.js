@@ -35,4 +35,31 @@ adminRoutes.post('/seed-product', async (c) => {
     }
 });
 
+// POST /api/admin/import-product/:productId
+adminRoutes.post('/import-product/:productId', async (c) => {
+    const env = c.env;
+    if (c.req.headers.get('X-Admin-Secret') !== env.ADMIN_AUTH_KEY) {
+        return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const { productId } = c.req.param();
+    console.log(`Received request to import product ID: ${productId}`);
+
+    try {
+        // Assuming seedProductData can handle product-specific logic
+        // and may not require targetColors for all product types.
+        // Passing an empty array or null if colors are not applicable for the given product.
+        const result = await seedProductData(env, productId, []); 
+        console.log('Import Result:', result);
+        if (result.success) {
+            return c.json(result);
+        } else {
+            return c.json(result, result.status || 500); // Use status from result if available
+        }
+    } catch (err) {
+        console.error(`Error importing product ID ${productId}:`, err);
+        return c.json({ success: false, message: 'Internal server error during product import.' }, 500);
+    }
+});
+
 export default adminRoutes; 
