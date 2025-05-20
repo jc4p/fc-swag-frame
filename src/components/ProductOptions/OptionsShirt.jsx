@@ -565,7 +565,7 @@ export function OptionsShirt({ product }) {
             logToOverlay("User FID:", userFid);
 
             // 4. Update Auth Context
-            login(userFid, backendVerifyData.fid);
+            // login(userFid, backendVerifyData.fid);
             logToOverlay("User successfully signed in and authenticated.");
             alert("Sign-in successful! You can now publish your design."); // Inform user
 

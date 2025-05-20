@@ -1,0 +1,4 @@
+{
+  "ignoreCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then echo \"Ignoring API folder\"; else exit 0; fi",
+  "excludeFiles": "api/**"
+}
