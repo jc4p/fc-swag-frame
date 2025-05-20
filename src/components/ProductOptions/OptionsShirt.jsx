@@ -548,7 +548,7 @@ export function OptionsShirt({ product }) {
             try {
                 const url = new URL(window.location);
                 appDomain = url.port ? `${url.hostname}:${url.port}` : url.hostname;
-                console.log(`handleSignIn: Derived APP_DOMAIN: ${appDomain} from request URL: ${request.url}`);
+                console.log(`handleSignIn: Derived APP_DOMAIN: ${appDomain} from request URL: ${window.location}`);
             } catch (e) {
                 console.error("handleSignIn: Failed to parse request URL to derive APP_DOMAIN:", e);
                 return Response.json({ success: false, message: 'Server configuration error (domain parsing).' }, { status: 500 });
