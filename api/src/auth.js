@@ -170,7 +170,7 @@ export const authMiddleware = async (c, next) => {
 			throw new Error('Invalid token payload');
 		}
 
-		c.set('userFid', payload.fid);
+		c.set('userFid', payload.sub);
 		// console.log(`Auth Middleware: FID ${payload.fid} authorized and set in context.`); // Removed
 
 	} catch (err) {
