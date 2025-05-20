@@ -9,6 +9,7 @@
 	},
 	"dependencies": {
 		"@farcaster/auth-client": "^0.3.0",
+		"@farcaster/quick-auth": "^0.0.5",
 		"@tsndr/cloudflare-worker-jwt": "^3.1.4",
 		"hono": "^3.0.0",
 		"viem": "^2.28.3"

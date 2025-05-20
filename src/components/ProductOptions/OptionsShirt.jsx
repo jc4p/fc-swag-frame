@@ -8,7 +8,7 @@ import styles from './ProductOptions.module.css';
 import { useDebug } from '@/contexts/DebugContext'; // <-- Add import
 import { useAuth } from '@/contexts/AuthContext'; // <-- Import Auth context hook
 import * as frame from '@farcaster/frame-sdk'; // <-- Import Frame SDK
-
+import { createClient } from "@farcaster/quick-auth";
 // Import SVG files as URLs for use-image
 import trashIconUrl from '@/assets/icons/trash.svg';
 import removeBgIconUrl from '@/assets/icons/remove-bg.svg';
@@ -542,10 +542,24 @@ export function OptionsShirt({ product }) {
 
             const loginToken = signInResult.token
 
-            console.log("Login Token:", loginToken);
-            logToOverlay("Login Token:", loginToken);
+            const authClient = createClient();
 
-            const userFid = loginToken.sub
+            let appDomain;
+            try {
+                const url = new URL(window.location);
+                appDomain = url.port ? `${url.hostname}:${url.port}` : url.hostname;
+                console.log(`handleSignIn: Derived APP_DOMAIN: ${appDomain} from request URL: ${request.url}`);
+            } catch (e) {
+                console.error("handleSignIn: Failed to parse request URL to derive APP_DOMAIN:", e);
+                return Response.json({ success: false, message: 'Server configuration error (domain parsing).' }, { status: 500 });
+            }
+
+            const loginPayload = await authClient.verifyJwt({ token: loginToken, domain: appDomain });
+
+            console.log("Login Token:", loginPayload);
+            logToOverlay("Login Token:", loginPayload);
+
+            const userFid = loginPayload.sub
 
             console.log("User FID:", userFid);
             logToOverlay("User FID:", userFid);

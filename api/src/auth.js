@@ -1,6 +1,6 @@
 import { createAppClient, viemConnector } from '@farcaster/auth-client';
 import { sign, verify } from '@tsndr/cloudflare-worker-jwt';
-const { createClient } from "@farcaster/quick-auth";
+import { createClient } from "@farcaster/quick-auth";
 
 /**
  * Handles the Sign-In With Farcaster verification and JWT issuance.
