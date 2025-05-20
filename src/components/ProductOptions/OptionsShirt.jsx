@@ -485,7 +485,6 @@ export function OptionsShirt({ product }) {
     event.target.value = '';
   };
 
-  // NEW Effect: Fetch Nonce on Mount
   useEffect(() => {
     const fetchNonce = async () => {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
@@ -537,41 +536,22 @@ export function OptionsShirt({ product }) {
 
             // 2. Trigger Frame SDK Sign-In
             logToOverlay("Calling sdk.actions.signIn...");
-            const signInResult = await frame.sdk.actions.signIn({ nonce: signInNonce }); // <-- Use state nonce
+            // const signInResult = await frame.sdk.actions.signIn({ nonce: signInNonce });
+            const signInResult = await frame.sdk.experimental.quickAuth();
             logToOverlay(`signIn action completed.`);
 
-            // Check if signInResult is valid (adjust based on actual SDK return type if needed)
-            if (!signInResult || !signInResult.message || !signInResult.signature) {
-                 logToOverlay("Sign-in was cancelled or failed in Frame.");
-                 // Don't throw an error, just stop the process if user cancelled.
-                 setIsSigningIn(false);
-                 return; 
-            }
+            const loginToken = signInResult.token
 
-            logToOverlay("Received signature and message from Frame SDK.");
+            console.log("Login Token:", loginToken);
+            logToOverlay("Login Token:", loginToken);
 
-            // 3. Verify SIWF with backend
-            logToOverlay("Sending SIWF details to backend /auth/signin...");
-            const backendVerifyRes = await fetch(`${apiUrl}/api/auth/signin`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: signInResult.message,
-                    signature: signInResult.signature,
-                    nonce: signInNonce // Send nonce back for potential validation
-                }),
-            });
+            const userFid = loginToken.sub
 
-            const backendVerifyData = await backendVerifyRes.json();
-
-            if (!backendVerifyRes.ok || !backendVerifyData.success || !backendVerifyData.token || !backendVerifyData.fid) {
-                throw new Error(`Backend verification failed: ${backendVerifyData.message || 'Unknown error'}`);
-            }
-
-            logToOverlay(`Backend verification successful. Received token for FID: ${backendVerifyData.fid}`);
+            console.log("User FID:", userFid);
+            logToOverlay("User FID:", userFid);
 
             // 4. Update Auth Context
-            login(backendVerifyData.token, backendVerifyData.fid);
+            login(userFid, backendVerifyData.fid);
             logToOverlay("User successfully signed in and authenticated.");
             alert("Sign-in successful! You can now publish your design."); // Inform user
 

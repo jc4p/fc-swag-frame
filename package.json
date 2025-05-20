@@ -9,7 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@farcaster/frame-sdk": "^0.0.37",
+    "@farcaster/frame-sdk": "^0.0.47",
+    "@farcaster/quick-auth": "^0.0.5",
     "canvas": "^3.0.0-rc3",
     "dotenv": "^16.5.0",
     "konva": "^9.3.20",

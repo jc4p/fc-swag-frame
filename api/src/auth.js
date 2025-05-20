@@ -1,5 +1,6 @@
 import { createAppClient, viemConnector } from '@farcaster/auth-client';
 import { sign, verify } from '@tsndr/cloudflare-worker-jwt';
+const { createClient } from "@farcaster/quick-auth";
 
 /**
  * Handles the Sign-In With Farcaster verification and JWT issuance.
@@ -147,19 +148,24 @@ export const authMiddleware = async (c, next) => {
 
 	try {
 		// console.log("Auth Middleware: Attempting jwt.verify..."); // Removed
-		const isValid = await verify(token, secret, { algorithm: 'HS256' }); 
+		// const isValid = await verify(token, secret, { algorithm: 'HS256' }); 
 		// console.log(`Auth Middleware: jwt.verify result: ${isValid}`); // Removed
-		
-		if (!isValid) {
-			// console.error("Auth Middleware: Token failed jwt.verify (isValid=false)"); // Removed
-			throw new Error('Invalid token (verify step)');
-		}
 
-		// console.log("Auth Middleware: Attempting jwt.decode..."); // Removed
-		const { payload } = decode(token);
-		// console.log("Auth Middleware: Decoded payload:", payload); // Removed
+        const client = createClient();
 
-		if (!payload || !payload.fid) {
+        let appDomain;
+        try {
+            const url = new URL(request.url);
+            appDomain = url.port ? `${url.hostname}:${url.port}` : url.hostname;
+            console.log(`handleSignIn: Derived APP_DOMAIN: ${appDomain} from request URL: ${request.url}`);
+        } catch (e) {
+            console.error("handleSignIn: Failed to parse request URL to derive APP_DOMAIN:", e);
+            return Response.json({ success: false, message: 'Server configuration error (domain parsing).' }, { status: 500 });
+        }
+        
+        const payload = await client.verifyJwt({ token, domain })
+
+		if (!payload || !payload.sub) {
 			// console.error("Auth Middleware: Token payload invalid or missing fid"); // Removed
 			throw new Error('Invalid token payload');
 		}
