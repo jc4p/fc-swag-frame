@@ -526,21 +526,20 @@ export function OptionsStickerSheet({ product }) {
             )}
           </Layer>
           <Layer name="interactiveLayer">
-            {/* Print Area Visualisation */}
-            {printAreaRect.width > 0 ? (
-                <Rect
-                    x={printAreaRect.x}
-                    y={printAreaRect.y}
-                    width={printAreaRect.width}
-                    height={printAreaRect.height}
-                    stroke="rgba(0,0,0,0.3)"
-                    strokeWidth={1}
-                    dash={[5, 3]}
-                    listening={false} 
-                />
+            {printAreaRect.width > 0 ? (<Rect x={printAreaRect.x} y={printAreaRect.y} width={printAreaRect.width} height={printAreaRect.height} stroke="rgba(0,0,0,0.3)" strokeWidth={1} dash={[5, 3]} listening={false} />) : null}
+            {!userImages.length && templateStatus === 'loaded' && printAreaRect.width > 0 ? (
+               <Text
+                  text="Click to Upload Stickers"
+                  x={printAreaRect.x}
+                  y={printAreaRect.y + printAreaRect.height / 2 - 10}
+                  width={printAreaRect.width}
+                  height={20}
+                  align="center"
+                  verticalAlign="middle"
+                  fontSize={16}
+                  fill='#555555'
+               />
             ) : null}
-
-            {/* Render all user images - Restoring this block */}
             {userImages.map((imgData) => (
                 <UserStickerImage 
                     key={imgData.id} 
@@ -559,23 +558,6 @@ export function OptionsStickerSheet({ product }) {
                     onTransformLive={handleSelectedImageTransform}
                 />
             ))}
-
-            {/* Placeholder Text - Restoring this block */}
-            {!userImages.length && templateStatus === 'loaded' && printAreaRect.width > 0 ? (
-               <Text
-                  text="Click to Upload Stickers"
-                  x={printAreaRect.x}
-                  y={printAreaRect.y + printAreaRect.height / 2 - 10}
-                  width={printAreaRect.width}
-                  height={20}
-                  align="center"
-                  verticalAlign="middle"
-                  fontSize={16}
-                  fill='#555555'
-               />
-            ) : null}
-
-            {/* Transformer for Selected Image - Restoring this block */}
             {selectedKonvaImage ? (
                 <Transformer 
                     ref={transformerRef}
@@ -584,8 +566,6 @@ export function OptionsStickerSheet({ product }) {
                     visible={!isRemovingBackground}
                 />
             ) : null}
-            
-            {/* Action Icons for SELECTED image - Restoring these blocks */}
             {selectedKonvaImage && iconPositions.removeImg.visible && trashIconStatus === 'loaded' && !isRemovingBackground ? (
                 <Group 
                     x={iconPositions.removeImg.x} y={iconPositions.removeImg.y} 
@@ -598,7 +578,6 @@ export function OptionsStickerSheet({ product }) {
                     <Image image={trashIconImg} width={ICON_SIZE} height={ICON_SIZE} listening={false}/>
                 </Group>
             ) : null}
-
             {selectedKonvaImage && iconPositions.removeBg.visible && removeBgIconStatus === 'loaded' && !isRemovingBackground && !selectedKonvaImage.hasBgRemoved ? (
                 <Group 
                     x={iconPositions.removeBg.x} y={iconPositions.removeBg.y}
@@ -611,7 +590,6 @@ export function OptionsStickerSheet({ product }) {
                     <Image image={removeBgIconImg} width={ICON_SIZE} height={ICON_SIZE} listening={false}/>
                 </Group>
             ) : null}
-
           </Layer>
         </Stage>
         
@@ -714,35 +692,74 @@ function UserStickerImage({
     const imageRef = imageData.konvaRef; // Use the ref passed in imageData
     const { logToOverlay } = useDebug();
 
+    // Ensure imageData.attrs exists, providing a default if not.
+    // Also ensure key properties like x, y, id are present if attrs is defined but partial.
+    const baseAttrs = imageData.attrs || {};
+    const attrs = {
+        id: imageData.id, // Ensure id is always from imageData
+        x: baseAttrs.x || 0,
+        y: baseAttrs.y || 0,
+        scaleX: baseAttrs.scaleX || 0.3,
+        scaleY: baseAttrs.scaleY || 0.3,
+        rotation: baseAttrs.rotation || 0,
+        draggable: baseAttrs.draggable === undefined ? true : baseAttrs.draggable,
+        image: baseAttrs.image || null, // Konva image object
+        offsetX: baseAttrs.offsetX, // Will be set by effect
+        offsetY: baseAttrs.offsetY, // Will be set by effect
+    };
+
     useEffect(() => {
-        if (imageStatus === 'loaded' && imageObj && !imageData.attrs.image) {
-            logToOverlay(`Sticker ${imageData.id} loaded into Konva node`);
-            onChange({
-                ...imageData.attrs,
-                image: imageObj,
+        if (imageStatus === 'loaded' && imageObj && !attrs.image) {
+            logToOverlay(`Sticker ${imageData.id} loaded into Konva node, setting image and offset.`);
+            onChange({ // This onChange should update the parent's state for this image's attrs
+                ...attrs,
+                image: imageObj, // This is the actual Konva image object
                 offsetX: imageObj.width / 2,
                 offsetY: imageObj.height / 2,
             });
         }
-    }, [imageStatus, imageObj, imageData, onChange, logToOverlay]);
+    // Critical: Ensure `attrs` in dependency array is stable or correctly handled.
+    // If `attrs` is rebuilt on every render (as it is above), this effect might loop or behave unexpectedly.
+    // A better approach might be to only include specific fields from attrs if possible,
+    // or use useMemo for attrs if its construction is complex and shouldn't trigger effect unless content changes.
+    // For now, let's use imageData.attrs as a proxy for deep changes, though it's not perfect.
+    }, [imageStatus, imageObj, imageData.id, imageData.attrs, onChange, logToOverlay]);
 
-    if (imageStatus === 'loading') return null; // Or a placeholder
+
+    if (imageStatus === 'loading') {
+      return null;
+    }
+
     if (imageStatus === 'failed') {
         logToOverlay(`Failed to load sticker image: ${imageData.id}`);
-        return <Text text="Error loading image" fill="red" x={imageData.attrs.x} y={imageData.attrs.y}/>;
+        return <Text text="Error loading image" fill="red" x={attrs.x} y={attrs.y} />;
     }
-    if (!imageData.attrs.image && imageStatus !== 'loaded') return null; // Not ready yet
-    if (!imageData.attrs.image && imageStatus === 'loaded' && !imageObj) return null; // Still waiting for effect
 
+    // At this point, imageStatus === 'loaded'
+    // We must have imageObj to render an Image.
+    // And imageData.attrs.image (which is attrs.image here) should have been set by the effect.
+    if (!imageObj) {
+        logToOverlay(`Sticker ${imageData.id}: imageStatus is '${imageStatus}' but imageObj is missing. Returning null.`);
+        return null; // Or a placeholder Text
+    }
+    
+    // If the effect hasn't populated attrs.image yet (via onChange in parent, then prop update),
+    // it's not safe to render. The parent should provide the updated attrs.
+    if (!attrs.image) {
+        logToOverlay(`Sticker ${imageData.id}: imageObj is loaded, but attrs.image is not set in props yet. Returning null.`);
+        return null; // Waiting for parent to update imageData.attrs with the image object
+    }
+
+    // Event handlers
     const handleDragEnd = (e) => {
-        onChange({ ...imageData.attrs, x: e.target.x(), y: e.target.y() });
-        // No need to call onTransformLive here as dragEND implies transformEND will also update icons
+        onChange({ ...attrs, x: e.target.x(), y: e.target.y() });
+        if (isSelected && onTransformLive) { onTransformLive(e.target); }
     };
 
     const handleTransformEnd = (e) => {
         const node = e.target;
         const newAttrs = {
-            ...imageData.attrs,
+            ...attrs,
             x: node.x(),
             y: node.y(),
             scaleX: Math.max(0.01, node.scaleX()),
@@ -750,31 +767,26 @@ function UserStickerImage({
             rotation: node.rotation(),
         };
         onChange(newAttrs);
-        if (isSelected && onTransformLive) { // Ensure icons update after transform completion
-             onTransformLive(node);
-        }
+        if (isSelected && onTransformLive) { onTransformLive(node); }
     };
 
     const handleDragMove = (e) => {
-        if (isSelected && onTransformLive) {
-            onTransformLive(e.target);
-        }
+        if (isSelected && onTransformLive) { onTransformLive(e.target); }
     };
 
     const handleTransform = (e) => {
-        if (isSelected && onTransformLive) {
-            onTransformLive(e.target);
-        }
+        if (isSelected && onTransformLive) { onTransformLive(e.target); }
     };
     
-    // Basic drag bounds, can be improved
     const dragBoundFunc = (pos) => {
-        if (!imageRef.current || !imageData.attrs || !printAreaRect || !imageData.attrs.image) return pos;
+        // Simplified, ensure printAreaRect and attrs.image are valid before calculations
+        if (!imageRef.current || !attrs.image || !printAreaRect || !printAreaRect.width) return pos;
         const node = imageRef.current;
         const scaleX = node.scaleX();
         const scaleY = node.scaleY();
-        const imgWidth = imageData.attrs.image.width * scaleX;
-        const imgHeight = imageData.attrs.image.height * scaleY;
+        // Use actual image dimensions from imageObj if available and attrs.image is the Konva image
+        const imgWidth = attrs.image.width * scaleX;
+        const imgHeight = attrs.image.height * scaleY;
 
         const minX = printAreaRect.x + imgWidth / 2;
         const maxX = printAreaRect.x + printAreaRect.width - imgWidth / 2;
@@ -793,17 +805,17 @@ function UserStickerImage({
     return (
         <Image
             ref={imageRef}
-            {...imageData.attrs}
-            image={imageObj} 
-            draggable={!isTransformingDisabled && imageData.attrs.draggable}
-            listening={!isTransformingDisabled}
-            onClick={onSelect}
-            onTap={onSelect}
+            {...attrs} // Spread the guarded and defaulted attrs
+            image={attrs.image} // Crucially, use the image from attrs, which should be set by useEffect->onChange->props
+            draggable={!isTransformingDisabled && attrs.draggable}
+            listening={!isTransformingDisabled && attrs.image != null} // Only listen if image is loaded
+            onClick={attrs.image ? onSelect : undefined} // Only allow select if image is loaded
+            onTap={attrs.image ? onSelect : undefined}
             onDragEnd={handleDragEnd}
             onTransformEnd={handleTransformEnd}
-            onDragMove={handleDragMove}      // Add live drag move handler
-            onTransform={handleTransform}    // Add live transform handler
+            onDragMove={handleDragMove}
+            onTransform={handleTransform}
             dragBoundFunc={dragBoundFunc}
         />
     );
-} 
+}
