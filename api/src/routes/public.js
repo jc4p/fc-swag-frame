@@ -1,14 +1,14 @@
 import { Hono } from 'hono';
-import { handleSignIn } from '../auth'; // Assuming auth handler is separate
+// import { handleSignIn } from '../auth'; // Assuming auth handler is separate
 
 const publicRoutes = new Hono();
 
 // --- Public Routes ---
 
 // POST /api/auth/signin
-publicRoutes.post('/auth/signin', async (c) => {
-    return handleSignIn(c.req.raw, c.env);
-});
+// publicRoutes.post('/auth/signin', async (c) => {
+//     return handleSignIn(c.req.raw, c.env);
+// });
 
 // GET /api/products
 publicRoutes.get('/products', async (c) => {
