@@ -1,86 +1,63 @@
-/* Import Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;700&display=swap');
+/* Import Google Fonts to match designer's choice */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&family=Noto+Sans:wght@400;500;700;900&display=swap');
 
-/* Define CSS Variables for Theme */
+/* CSS Variables matching the designer's style */
 :root {
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-  --font-serif: 'Playfair Display', Georgia, Cambria, "Times New Roman", Times, serif;
-
-  /* "High-End Mall" Palette */
-  --color-primary: #111111;      /* Primary text, dark elements */
-  --color-secondary: #666666;    /* Secondary text, subdued elements */
-  --color-accent: #BFA181;       /* Gold accent for highlights, buttons */
-  --color-accent-text: #111111;  /* Text on accent background (ensure contrast) */
-  --color-bg-light: #FFFFFF;     /* Main background */
-  --color-bg-alt: #F8F8F8;      /* Subtle background variation (cards, sections) */
-  --color-border: #EAEAEA;      /* Borders, dividers */
-  --color-error: #D93025;       /* Error messages */
-
-  /* Spacing & Radius */
-  --space-xs: 0.25rem; /* 4px */
-  --space-sm: 0.5rem;  /* 8px */
-  --space-md: 1rem;    /* 16px */
-  --space-lg: 1.5rem;  /* 24px */
-  --space-xl: 2rem;    /* 32px */
-  --radius-sm: 0.25rem; /* 4px */
-  --radius-md: 0.5rem;  /* 8px */
+  --font-primary: 'Plus Jakarta Sans', 'Noto Sans', sans-serif;
+  
+  /* Designer's color palette */
+  --color-text-primary: #101418;
+  --color-text-secondary: #5c718a;
+  --color-bg-primary: #f9fafb;
+  --color-bg-secondary: #eaedf1;
+  --color-bg-white: #ffffff;
+  --color-border: #d4dbe2;
+  --color-accent: #b2cae5;
+  
+  /* Border radius */
+  --radius-xl: 12px;
+  --radius-full: 50%;
+  
+  /* Spacing */
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
 }
 
-/* Apply base styles */
-html {
+/* Reset and base styles */
+* {
   box-sizing: border-box;
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: inherit;
-}
-
-body {
   margin: 0;
   padding: 0;
-  font-family: var(--font-sans);
-  color: var(--color-primary);
-  background-color: var(--color-bg-light);
+}
+
+html, body {
+  font-family: var(--font-primary);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-serif);
-  margin: 0; /* Reset default heading margins */
-  font-weight: 700; /* Bolder headings */
-}
-
-a {
-  color: var(--color-accent);
-  text-decoration: none;
-  transition: opacity 0.2s ease-in-out;
-}
-
-a:hover {
-  opacity: 0.8;
-}
-
 button {
-  font-family: var(--font-sans);
+  font-family: inherit;
   cursor: pointer;
   border: none;
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-md);
-  transition: background-color 0.2s ease-in-out, opacity 0.2s ease-in-out;
+  background: none;
+  outline: none;
 }
 
-/* Utility class for container */
-.container {
-  width: 100%;
-  max-width: 1200px; /* Adjust max-width as needed */
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: var(--space-md);
-  padding-right: var(--space-md);
+input {
+  font-family: inherit;
+  outline: none;
 }
 
-/* Remove default Next.js styles if they exist */
-/* ... potentially remove other conflicting base styles ... */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
+}

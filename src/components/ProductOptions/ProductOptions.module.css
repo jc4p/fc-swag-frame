@@ -1,396 +1,289 @@
+/* Main container matching designer's layout */
 .optionsContainer {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  min-height: 100vh;
+  background-color: var(--color-bg-primary);
+  font-family: var(--font-primary);
+  justify-content: space-between;
 }
 
-/* NEW: Styles for the container holding the canvas */
+/* Header section */
+.header {
+  display: flex;
+  align-items: center;
+  background-color: var(--color-bg-primary);
+  padding: var(--space-4);
+  padding-bottom: var(--space-2);
+  justify-content: space-between;
+}
+
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  color: var(--color-text-primary);
+}
+
+.headerTitle {
+  color: var(--color-text-primary);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  flex: 1;
+  text-align: center;
+  padding-right: 48px; /* Offset for close button */
+}
+
+/* Preview container matching designer's style */
 .previewContainer {
-  order: -1;
+  padding: var(--space-4);
+  padding-top: var(--space-3);
+}
+
+.previewWrapper {
+  width: 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  background-color: var(--color-bg-primary);
+  border-radius: var(--radius-xl);
+  min-height: 218px;
   position: relative;
-  width: 100%;
-  max-width: 400px;
-  /* Aspect ratio is set inline via style prop */
-  /* height: auto; /* Height is determined by width + aspect-ratio */
-  margin-left: auto;
-  margin-right: auto;
-  border: 1px solid var(--color-border);
-  background-color: #f0f0f0; /* Fallback background */
+}
+
+/* Upload button */
+.uploadSection {
+  display: flex;
+  padding: var(--space-4);
+  padding-top: var(--space-3);
+  justify-content: center;
+}
+
+.uploadButton {
+  display: flex;
+  min-width: 84px;
+  max-width: 480px;
   cursor: pointer;
-  overflow: hidden; /* Ensure canvas doesn't overflow container */
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  height: 40px;
+  padding: 0 var(--space-4);
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.015em;
+  border: none;
+  transition: all 0.2s ease;
 }
 
-/* Styles for the canvas element itself */
-.previewCanvas {
-  display: block;
-  position: absolute; /* Position absolutely within the container */
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%; /* Fill the container */
-  /* The actual drawing resolution (canvas.width/height) is set in JS */
+.uploadButton:hover {
+  background-color: #d1d5db;
 }
 
-/* NEW: Loading overlay style */
+/* Section headers */
+.sectionHeader {
+  color: var(--color-text-primary);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  padding: var(--space-4);
+  padding-bottom: var(--space-2);
+  padding-top: var(--space-4);
+}
+
+/* Color selector section */
+.colorSection {
+  padding: var(--space-4);
+}
+
+.colorSwatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+}
+
+/* Commission section */
+.commissionSection {
+  padding: var(--space-4);
+  padding-top: var(--space-3);
+}
+
+.commissionWrapper {
+  display: flex;
+  height: 40px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xl);
+  background-color: var(--color-bg-secondary);
+  padding: 4px;
+}
+
+/* Price breakdown */
+.priceSection {
+  padding: var(--space-4);
+}
+
+.priceGrid {
+  display: grid;
+  grid-template-columns: 20% 1fr;
+  gap: 0 var(--space-6);
+}
+
+.priceRow {
+  grid-column: span 2;
+  display: grid;
+  grid-template-columns: subgrid;
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-5) 0;
+}
+
+.priceLabel {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.priceValue {
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* Final price section */
+.finalPriceSection {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background-color: var(--color-bg-primary);
+  padding: var(--space-4);
+  min-height: 56px;
+  justify-content: space-between;
+}
+
+.finalPriceLabel {
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.4;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finalPriceValue {
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* Bottom section */
+.bottomSection {
+  padding: var(--space-4);
+  padding-top: var(--space-3);
+}
+
+.createButton {
+  display: flex;
+  min-width: 84px;
+  max-width: 480px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  height: 48px;
+  padding: 0 var(--space-5);
+  flex: 1;
+  background-color: var(--color-accent);
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.015em;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.createButton:hover:not(:disabled) {
+  background-color: #9bb8d3;
+}
+
+.createButton:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.spacer {
+  height: var(--space-5);
+  background-color: var(--color-bg-primary);
+}
+
+/* Loading and utility styles */
 .loadingOverlay {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(255, 255, 255, 0.8);
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-  color: #333;
-  z-index: 10;
-}
-
-/* Product Name & Starting Price Section */
-/* .titlePriceSection { ... } */
-/* .startingPrice { ... } */
-
-/* Keep Option Section base styling */
-.optionSection {
-  padding: var(--space-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background-color: var(--color-bg-light);
-  order: 1; /* Default order for sections */
-}
-
-.sectionTitle {
-  font-size: 1.125rem; /* 18px */
-  font-weight: 600;
-  font-family: var(--font-sans);
-  color: var(--color-primary);
-  margin-bottom: var(--space-md);
-}
-
-/* Color Swatches */
-.colorSwatches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-}
-
-.swatch {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid var(--color-border);
-  cursor: pointer;
-  transition: transform 0.1s ease-in-out, border-color 0.2s ease;
-  padding: 0; /* Remove default button padding */
-  background-color: grey; /* Fallback */
-}
-
-.swatch:hover {
-  transform: scale(1.1);
-}
-
-.swatch.selected {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px var(--color-accent); /* Extra visual indication */
-}
-
-/* Commission Button Styles */
-.commissionButtons {
-    display: flex;
-    flex-wrap: wrap; /* Allow wrapping on very small screens if needed */
-    gap: var(--space-sm);
-    margin-bottom: var(--space-md);
-}
-
-.commissionButton {
-  padding: var(--space-sm) var(--space-md);
-  border: 1px solid var(--color-border);
-  background-color: var(--color-bg-light);
-  color: var(--color-primary);
-  border-radius: var(--radius-md);
+  font-size: 1.1rem;
   font-weight: 500;
-  flex-grow: 1; /* Allow buttons to grow to fill space */
-  text-align: center;
+  z-index: 20;
+  border-radius: var(--radius-xl);
 }
 
-.commissionButton:hover:not(.selected) {
-  border-color: var(--color-secondary);
-  background-color: var(--color-bg-alt);
-}
-
-.commissionButton.selected {
-  background-color: var(--color-primary);
-  color: var(--color-bg-light);
-  border-color: var(--color-primary);
-}
-
-/* Styles for price breakdown (can keep mostly as is) */
-.priceBreakdown {
-    font-size: 0.875rem; /* 14px */
-    color: var(--color-secondary);
-    margin-top: var(--space-sm);
-    margin-bottom: var(--space-xs);
-    line-height: 1.5;
-    background-color: var(--color-bg-alt);
-    padding: var(--space-sm);
-    border-radius: var(--radius-sm);
-}
-
-.priceBreakdown p {
-    margin: 0; /* Remove default paragraph margins if any */
-}
-
-.priceBreakdown strong {
-    color: var(--color-primary);
-    font-weight: 600;
-}
-
-/* Style for the '+ Shipping' text */
-.shippingText {
-    font-weight: normal; /* Ensure it's not bold */
-    color: var(--color-secondary); /* Match label color */
-    font-size: inherit; /* Inherit size from parent paragraph */
-    margin-left: var(--space-xs); /* Add small space before it */
-}
-
-.commissionNote {
-    font-size: 0.75rem; /* 12px */
-    color: var(--color-secondary);
-    margin-top: var(--space-md);
-}
-
-/* Action Button Section (Publish) */
-.actionSection {
-    margin-top: var(--space-md);
-    order: 99; /* Ensure publish button is last */
-}
-
-.primaryButton {
-  background-color: var(--color-primary);
-  color: var(--color-bg-light);
-  padding: var(--space-md) var(--space-lg);
-  font-weight: 600;
-  width: 100%;
-}
-
-.primaryButton:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.primaryButton:disabled {
-  background-color: var(--color-secondary);
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* --- Responsive Adjustments --- */
-@media (min-width: 768px) {
-  .optionsContainer {
-      /* No change needed here if parent grid handles columns */
-  }
-
-  .previewContainer {
-     order: 0; /* Reset order for desktop layout */
-  }
-
-  /* Other elements will flow naturally */
-}
-
-.productName {
-  font-size: 1.75rem; /* 28px */
-  font-weight: 700;
-  color: var(--color-primary);
-  margin-bottom: var(--space-xs); /* Keep tight margin */
-  line-height: 1.2;
-  order: 0;
-}
-
-/* Style for Base Price below title */
-.basePriceDisplay {
-    font-size: 0.9rem; /* Slightly smaller */
-    font-weight: 500;
-    color: var(--color-secondary);
-    margin: 0; /* Remove all default margins */
-    margin-top: var(--space-sm);
-    order: 0; /* Keep it grouped with title */
-}
-
-.basePriceDisplay strong {
-    color: var(--color-primary);
-    font-weight: 600;
-}
-
-/* Ensure space before next element (Color Selector) */
-.optionSection.colorSelector {
-    margin-top: 0;
-}
-
-/* Commission Button Styles */
-.commissionButtons {
-    display: flex;
-    flex-wrap: wrap; /* Allow wrapping on very small screens if needed */
-    gap: var(--space-sm);
-    margin-bottom: var(--space-md);
-}
-
-.commissionButton {
-  padding: var(--space-sm) var(--space-md);
-  border: 1px solid var(--color-border);
-  background-color: var(--color-bg-light);
-  color: var(--color-primary);
-  border-radius: var(--radius-md);
-  font-weight: 500;
-  flex-grow: 1; /* Allow buttons to grow to fill space */
-  text-align: center;
-}
-
-.commissionButton:hover:not(.selected) {
-  border-color: var(--color-secondary);
-  background-color: var(--color-bg-alt);
-}
-
-.commissionButton.selected {
-  background-color: var(--color-primary);
-  color: var(--color-bg-light);
-  border-color: var(--color-primary);
-}
-
-/* Styles for price breakdown (can keep mostly as is) */
-.priceBreakdown {
-    font-size: 0.875rem; /* 14px */
-    color: var(--color-secondary);
-    margin-top: var(--space-sm);
-    margin-bottom: var(--space-xs);
-    line-height: 1.5;
-    background-color: var(--color-bg-alt);
-    padding: var(--space-sm);
-    border-radius: var(--radius-sm);
-}
-
-.priceBreakdown p {
-    margin: 0; /* Remove default paragraph margins if any */
-}
-
-.priceBreakdown strong {
-    color: var(--color-primary);
-    font-weight: 600;
-}
-
-/* Style for the '+ Shipping' text */
-.shippingText {
-    font-weight: normal; /* Ensure it's not bold */
-    color: var(--color-secondary); /* Match label color */
-    font-size: inherit; /* Inherit size from parent paragraph */
-    margin-left: var(--space-xs); /* Add small space before it */
-}
-
-.commissionNote {
-    font-size: 0.75rem; /* 12px */
-    color: var(--color-secondary);
-    margin-top: var(--space-md);
-}
-
-/* Action Button Section (Publish) */
-.actionSection {
-    margin-top: var(--space-md);
-    order: 99; /* Ensure publish button is last */
-}
-
-.primaryButton {
-  background-color: var(--color-primary);
-  color: var(--color-bg-light);
-  padding: var(--space-md) var(--space-lg);
-  font-weight: 600;
-  width: 100%;
-}
-
-.primaryButton:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.primaryButton:disabled {
-  background-color: var(--color-secondary);
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* --- Responsive Adjustments --- */
-@media (min-width: 768px) {
-  .optionsContainer {
-      /* No change needed here if parent grid handles columns */
-  }
-
-  .previewContainer {
-     order: 0; /* Reset order for desktop layout */
-  }
-
-  /* Other elements will flow naturally */
-}
-
-/* Styles for Preview/Upload Section */
-.previewContainer {
-  position: relative; /* Needed for absolute positioning of children overlays */
-  width: 100%;
-  /* height will be set dynamically via JS */
-  min-height: 200px;
-  cursor: pointer;
-  overflow: hidden;
-  border: 1px solid #eee;
-  /* background-color is now set inline */
-  /* background-image is now set inline */
-  /* background-size, repeat, position are set inline */
-  margin-bottom: 1rem;
-  display: flex; /* Still useful for centering placeholder */
-  align-items: center;
-  justify-content: center;
-}
-
-/* Style for the uploaded image overlay */
-.uploadedImageOverlay {
-  display: block;
-  max-width: 100%;
-  max-height: 100%;
-  /* position, top, left, width, height, object-fit set by JS inline style */
-  /* z-index is now set inline */
-  pointer-events: none;
-}
-
-/* Placeholder styling */
-.uploadPlaceholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-sm);
-  color: var(--color-secondary);
-  text-align: center;
-  /* z-index is set inline */
-  pointer-events: none;
-}
-
-/* NEW: Warning text style */
 .warningText {
-    color: var(--color-error, #d32f2f); /* Use error color variable or fallback */
-    font-size: 0.875rem;
-    text-align: center;
-    margin-top: var(--space-xs);
-    margin-bottom: var(--space-sm);
-}
-
-/* NEW: Style for secondary/remove button */
-.secondaryButton {
-  background-color: transparent;
-  color: var(--color-secondary);
-  border: 1px solid var(--color-border);
-  padding: var(--space-sm) var(--space-md);
+  color: #dc3545;
+  font-size: 0.9rem;
+  text-align: center;
   font-weight: 500;
-  width: auto; /* Don't force full width */
-  display: block; /* Or inline-block */
-  margin: var(--space-sm) auto; /* Center if needed */
-  border-radius: var(--radius-md);
+  margin-top: var(--space-2);
 }
 
-.secondaryButton:hover:not(:disabled) {
-  background-color: var(--color-bg-alt);
-  border-color: var(--color-secondary);
-} 
+.editorContainer {
+  width: 100%;
+}
+
+/* Legacy classes that might still be used */
+.productName {
+  color: var(--color-text-primary);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+.basePriceDisplay {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.optionSection {
+  margin: 0;
+}

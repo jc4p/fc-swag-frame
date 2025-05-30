@@ -45,12 +45,7 @@ export default async function DesignPage() {
   // It will also handle the case of a single product.
 
   return (
-    // Use the container utility class from globals.css
-    <main className={`container ${styles.pageLayout}`}>
-      <div className={styles.introSection}>
-        <h1 className={styles.mainHeading}>FC SWAG</h1>
-      </div>
-
+    <main>
       {/* Render the new component, passing products and any error */}
       <ProductSelectorAndEditor products={products} error={error} />
     </main>

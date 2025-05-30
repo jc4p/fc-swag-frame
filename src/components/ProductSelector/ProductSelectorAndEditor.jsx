@@ -63,15 +63,6 @@ export function ProductSelectorAndEditor({ products, error }) {
 
   // A product is selected, show the editor
   return (
-    <div>
-      <button onClick={handleBackToSelection} className={styles.backButton}>
-        &larr; Choose Different Product
-      </button>
-      <div className={styles.designerGrid}>
-        <div className={styles.optionsArea}>
-          <ProductOptionsLoader product={selectedProduct} />
-        </div>
-      </div>
-    </div>
+    <ProductOptionsLoader product={selectedProduct} />
   );
 } 
