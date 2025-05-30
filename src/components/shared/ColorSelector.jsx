@@ -20,7 +20,7 @@ export function ColorSelector({
 
   return (
     <div className={`${styles.colorSelector} ${className}`}>
-      <h3 className={styles.sectionTitle}>{title}</h3>
+      {title && <h3 className={styles.sectionTitle}>{title}</h3>}
       <div className={styles.colorSwatches}>
         {colors.map(color => (
           <button
