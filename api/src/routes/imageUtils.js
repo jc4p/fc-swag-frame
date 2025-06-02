@@ -30,8 +30,6 @@ imageUtils.post('/remove-background', async (c) => {
 
     const pixianApiUrl = 'https://api.pixian.ai/api/v2/remove-background';
 
-    console.log(`Calling Pixian API for background removal...`);
-
     const pixianResponse = await fetch(pixianApiUrl, {
       method: 'POST',
       headers: {
@@ -49,8 +47,6 @@ imageUtils.post('/remove-background', async (c) => {
       console.error(`Pixian API Error: ${pixianResponse.status} ${pixianResponse.statusText}`, errorBody);
       return c.json({ error: 'Background removal failed', message: `Upstream service returned status ${pixianResponse.status}. ${errorBody}` }, 502); // 502 Bad Gateway
     }
-
-    console.log(`Pixian API call successful.`);
 
     // Get the resulting image as a Blob
     const resultBlob = await pixianResponse.blob();

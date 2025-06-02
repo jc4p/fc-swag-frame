@@ -138,13 +138,115 @@ protectedRoutes.post('/designs', async (c) => {
     }
 });
 
-// POST /api/designs/:design_id/publish - Publish a design (stub)
-protectedRoutes.post('/designs/:design_id/publish', (c) => {
+// POST /api/designs/:design_id/publish - Publish a design
+protectedRoutes.post('/designs/:design_id/publish', async (c) => {
     const userFid = c.get('userFid');
     const designId = c.req.param('design_id');
-    console.log(`Publishing design ${designId} for user FID: ${userFid}`);
-    // TODO: Implement publish logic (update is_public, set royalty, calculate price)
-    return c.json({ message: `Publish design ${designId} for ${userFid} not implemented yet` }, 501);
+    
+    if (!userFid) {
+        return c.json({ error: 'Unauthorized: Missing user FID in context' }, 401);
+    }
+
+    let body;
+    try {
+        body = await c.req.json();
+    } catch (e) {
+        return c.json({ error: 'Invalid JSON body' }, 400);
+    }
+
+    const { royalty_percent } = body;
+
+    // Validation
+    if (!royalty_percent || royalty_percent < 15 || royalty_percent > 30) {
+        return c.json({ 
+            error: 'royalty_percent is required and must be between 15 and 30' 
+        }, 400);
+    }
+
+    const db = c.env.DB;
+
+    try {
+        // 1. Get design details with variant pricing
+        const designResult = await db.prepare(`
+            SELECT d.id, d.fid, d.status, d.is_public, d.variant_id,
+                   pv.printful_price, pv.size, p.name as product_name
+            FROM designs d 
+            JOIN product_variants pv ON d.variant_id = pv.id
+            JOIN products p ON d.product_id = p.id
+            WHERE d.id = ? AND d.fid = ?
+        `).bind(designId, userFid).first();
+
+        if (!designResult) {
+            return c.json({ error: 'Design not found or not owned by user' }, 404);
+        }
+
+        if (designResult.status !== 'mockup_ready') {
+            return c.json({ 
+                error: 'Design must have mockup ready before publishing',
+                current_status: designResult.status 
+            }, 400);
+        }
+
+        if (designResult.is_public) {
+            return c.json({ error: 'Design is already published' }, 400);
+        }
+
+        // 2. Calculate pricing using the formula from API docs
+        const RAW_COST = designResult.printful_price; // Base cost from Printful
+        const PLATFORM_FEE = 4.00; // $4 USD platform fee
+        const royaltyDecimal = royalty_percent / 100;
+
+        // Formula: retail_price = roundUpTo99((RAW_COST + PLATFORM_FEE) / (1 - royalty_percent/100))
+        function roundUpTo99(price) {
+            return Math.ceil(price - 0.01) + 0.99;
+        }
+
+        const retailPrice = roundUpTo99((RAW_COST + PLATFORM_FEE) / (1 - royaltyDecimal));
+        const artistEarn = retailPrice * royaltyDecimal;
+
+        console.log(`Publishing design ${designId}:`, {
+            rawCost: RAW_COST,
+            platformFee: PLATFORM_FEE,
+            royaltyPercent: royalty_percent,
+            retailPrice,
+            artistEarn
+        });
+
+        // 3. Update design record
+        const updateResult = await db.prepare(`
+            UPDATE designs 
+            SET is_public = TRUE,
+                published_at = CURRENT_TIMESTAMP,
+                royalty_percent = ?,
+                retail_price = ?,
+                artist_earn = ?,
+                status = 'published',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND fid = ?
+            RETURNING id
+        `).bind(royalty_percent, retailPrice, artistEarn, designId, userFid).first();
+
+        if (!updateResult) {
+            throw new Error('Failed to update design for publishing');
+        }
+
+        return c.json({
+            success: true,
+            message: 'Design published successfully',
+            design_id: parseInt(designId),
+            pricing: {
+                royalty_percent,
+                retail_price: retailPrice,
+                artist_earn: artistEarn,
+                raw_cost: RAW_COST,
+                platform_fee: PLATFORM_FEE
+            }
+        });
+
+    } catch (error) {
+        console.error(`Error publishing design ${designId}:`, error);
+        return c.json({ error: 'Failed to publish design' }, 500);
+    }
 });
 
 // GET /api/orders - List user's orders (stub)

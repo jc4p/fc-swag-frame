@@ -152,12 +152,74 @@ publicRoutes.get('/designs/:design_id', (c) => {
 });
 
 // GET /api/feed (Public)
-publicRoutes.get('/feed', (c) => {
-    const page = c.req.query('page') || 1;
-    const limit = c.req.query('limit') || 10;
-    // TODO: Fetch paginated public designs from D1
-    console.log(`Fetching public feed (page=${page}, limit=${limit})`);
-    return c.json({ message: 'Public feed not implemented yet' }, 501);
+publicRoutes.get('/feed', async (c) => {
+    const page = parseInt(c.req.query('page')) || 1;
+    const limit = Math.min(parseInt(c.req.query('limit')) || 20, 50); // Max 50 per page
+    const offset = (page - 1) * limit;
+
+    try {
+        // Get total count of published designs
+        const countResult = await c.env.DB.prepare(
+            'SELECT COUNT(*) as total FROM designs WHERE is_public = TRUE'
+        ).first();
+        const totalDesigns = countResult?.total || 0;
+
+        if (totalDesigns === 0) {
+            return c.json({
+                designs: [],
+                pagination: {
+                    page,
+                    limit,
+                    total: 0,
+                    total_pages: 0,
+                    has_next: false,
+                    has_prev: false
+                }
+            });
+        }
+
+        // Fetch paginated published designs with product/variant info
+        const { results: designs } = await c.env.DB.prepare(`
+            SELECT 
+                d.id,
+                d.fid,
+                d.image_url,
+                d.mockup_url,
+                d.retail_price,
+                d.artist_earn,
+                d.royalty_percent,
+                d.published_at,
+                p.name as product_name,
+                p.slug as product_slug,
+                pv.color_name,
+                pv.size,
+                pv.color_code
+            FROM designs d
+            JOIN products p ON d.product_id = p.id
+            JOIN product_variants pv ON d.variant_id = pv.id
+            WHERE d.is_public = TRUE
+            ORDER BY d.published_at DESC
+            LIMIT ? OFFSET ?
+        `).bind(limit, offset).all();
+
+        const totalPages = Math.ceil(totalDesigns / limit);
+
+        return c.json({
+            designs: designs || [],
+            pagination: {
+                page,
+                limit,
+                total: totalDesigns,
+                total_pages: totalPages,
+                has_next: page < totalPages,
+                has_prev: page > 1
+            }
+        });
+
+    } catch (error) {
+        console.error('Error fetching public feed:', error);
+        return c.json({ error: 'Failed to fetch public feed' }, 500);
+    }
 });
 
 

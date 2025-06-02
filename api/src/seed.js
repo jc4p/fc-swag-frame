@@ -81,7 +81,54 @@ export async function seedProductData(env, productId, targetColors) {
         const variantTextureR2UrlMap = {}; // { printful_variant_id: r2_texture_url }
         const uniqueImageUrlsToUpload = new Map(); // <printful_url, { hash, extension, r2_url }>
 
-        if (mockupTemplates.length > 0) {
+        // Function to calculate template dimensions for sticker products using placement_dimensions
+        // Works for both Kiss-Cut Stickers (358) and Sticker Sheets (505)
+        const calculateStickerDimensions = (variant) => {
+            if (!['358', '505'].includes(productId.toString())) return null;
+            
+            const placement = variant.placement_dimensions?.find(p => p.placement === 'default');
+            if (!placement) return null;
+            
+            // For Kiss-Cut Stickers (358), skip rectangular variants (15"×3.75")
+            if (productId.toString() === '358' && placement.width === 15 && placement.height === 3.75) {
+                return null;
+            }
+            
+            const DPI = 300;
+            let marginInches, marginPixels;
+            
+            if (productId.toString() === '358') {
+                // Kiss-Cut Stickers: 0.125" margin around sticker
+                marginInches = 0.125;
+                marginPixels = Math.round(marginInches * DPI); // 38px
+            } else {
+                // Sticker Sheet (505): 0.25" margin (as per Printful specs)
+                marginInches = 0.25;
+                marginPixels = Math.round(marginInches * DPI); // 75px
+            }
+            
+            const templateWidth = Math.round((placement.width + 2 * marginInches) * DPI);
+            const templateHeight = Math.round((placement.height + 2 * marginInches) * DPI);
+            const printAreaWidth = Math.round(placement.width * DPI);
+            const printAreaHeight = Math.round(placement.height * DPI);
+            
+            return {
+                template_image_url: null,
+                template_width: templateWidth,
+                template_height: templateHeight,
+                print_area_width: printAreaWidth,
+                print_area_height: printAreaHeight,
+                print_area_top: marginPixels,
+                print_area_left: marginPixels,
+            };
+        };
+
+        // Check if we should use dynamic sticker calculation or hardcoded data
+        if (['358', '505'].includes(productId.toString())) {
+            console.log(`Using dynamic template calculation for sticker product ${productId} based on placement_dimensions.`);
+            // For sticker products, we'll calculate dimensions per variant instead of using common data
+            commonTemplateData = null; // Will be calculated per variant
+        } else if (mockupTemplates.length > 0) {
             const firstTemplate = mockupTemplates[0];
 
             // Process common overlay image URL
@@ -230,26 +277,39 @@ export async function seedProductData(env, productId, targetColors) {
                      return false;
                  }
             }
+
+            // For sticker products (358, 505), skip variants that can't be calculated
+            if (['358', '505'].includes(productId.toString())) {
+                const stickerDimensions = calculateStickerDimensions(variant);
+                if (!stickerDimensions) return false; // Skip if dimensions can't be calculated or rectangular
+            }
+
             // If we passed all applicable filters, include the variant
             return true;
-        }).map(variant => ({
-            printful_variant_id: variant.id,
-            printful_product_id: variant.catalog_product_id,
-            size: variant.size,
-            color_name: variant.color,
-            color_code: variant.color_code,
-            printful_price: priceMap[variant.id] ? parseFloat(priceMap[variant.id]) : null,
-            inventory_count: availabilityMap[variant.id]?.isInStock ? DEFAULT_INVENTORY : 0,
-            template_image_url: commonTemplateData?.template_image_url || null,
-            template_texture_url: variantTextureR2UrlMap[variant.id] || null,
-            template_width: commonTemplateData?.template_width || null,
-            template_height: commonTemplateData?.template_height || null,
-            print_area_width: commonTemplateData?.print_area_width || null,
-            print_area_height: commonTemplateData?.print_area_height || null,
-            print_area_top: commonTemplateData?.print_area_top || null,
-            print_area_left: commonTemplateData?.print_area_left || null,
-            status: availabilityMap[variant.id]?.isInStock ? 'available' : 'out_of_stock'
-        }));
+        }).map(variant => {
+            // Calculate variant-specific template data for sticker products
+            const variantTemplateData = ['358', '505'].includes(productId.toString()) ? 
+                calculateStickerDimensions(variant) : commonTemplateData;
+
+            return {
+                printful_variant_id: variant.id,
+                printful_product_id: variant.catalog_product_id,
+                size: variant.size,
+                color_name: variant.color,
+                color_code: variant.color_code,
+                printful_price: priceMap[variant.id] ? parseFloat(priceMap[variant.id]) : null,
+                inventory_count: availabilityMap[variant.id]?.isInStock ? DEFAULT_INVENTORY : 0,
+                template_image_url: variantTemplateData?.template_image_url || null,
+                template_texture_url: variantTextureR2UrlMap[variant.id] || null,
+                template_width: variantTemplateData?.template_width || null,
+                template_height: variantTemplateData?.template_height || null,
+                print_area_width: variantTemplateData?.print_area_width || null,
+                print_area_height: variantTemplateData?.print_area_height || null,
+                print_area_top: variantTemplateData?.print_area_top || null,
+                print_area_left: variantTemplateData?.print_area_left || null,
+                status: availabilityMap[variant.id]?.isInStock ? 'available' : 'out_of_stock'
+            };
+        });
 
         if (filteredVariants.length === 0) {
             // Add more context to the error message
