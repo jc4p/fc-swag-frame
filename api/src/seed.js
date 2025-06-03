@@ -81,30 +81,30 @@ export async function seedProductData(env, productId, targetColors) {
         const variantTextureR2UrlMap = {}; // { printful_variant_id: r2_texture_url }
         const uniqueImageUrlsToUpload = new Map(); // <printful_url, { hash, extension, r2_url }>
 
-        // Function to calculate template dimensions for sticker products using placement_dimensions
-        // Works for both Kiss-Cut Stickers (358) and Sticker Sheets (505)
-        const calculateStickerDimensions = (variant) => {
-            if (!['358', '505'].includes(productId.toString())) return null;
-            
+        // Function to calculate template dimensions for products using placement_dimensions
+        const calculateProductDimensions = (variant) => {
             const placement = variant.placement_dimensions?.find(p => p.placement === 'default');
             if (!placement) return null;
             
-            // For Kiss-Cut Stickers (358), skip rectangular variants (15"×3.75")
-            if (productId.toString() === '358' && placement.width === 15 && placement.height === 3.75) {
-                return null;
-            }
-            
             const DPI = 300;
-            let marginInches, marginPixels;
+            let marginInches = 0, marginPixels = 0;
             
             if (productId.toString() === '358') {
+                // Kiss-Cut Stickers (358): skip rectangular variants (15"×3.75")
+                if (placement.width === 15 && placement.height === 3.75) {
+                    return null;
+                }
                 // Kiss-Cut Stickers: 0.125" margin around sticker
                 marginInches = 0.125;
                 marginPixels = Math.round(marginInches * DPI); // 38px
-            } else {
-                // Sticker Sheet (505): 0.25" margin (as per Printful specs)
+            } else if (productId.toString() === '505') {
+                // Sticker Sheet: 0.25" margin (as per Printful specs)
                 marginInches = 0.25;
                 marginPixels = Math.round(marginInches * DPI); // 75px
+            } else if (['1', '171'].includes(productId.toString())) {
+                // Posters: No margin, full bleed
+                marginInches = 0;
+                marginPixels = 0;
             }
             
             const templateWidth = Math.round((placement.width + 2 * marginInches) * DPI);
@@ -123,10 +123,10 @@ export async function seedProductData(env, productId, targetColors) {
             };
         };
 
-        // Check if we should use dynamic sticker calculation or hardcoded data
-        if (['358', '505'].includes(productId.toString())) {
-            console.log(`Using dynamic template calculation for sticker product ${productId} based on placement_dimensions.`);
-            // For sticker products, we'll calculate dimensions per variant instead of using common data
+        // Check if we should use dynamic calculation for stickers/posters or template data
+        if (['358', '505', '1', '171'].includes(productId.toString())) {
+            console.log(`Using dynamic template calculation for product ${productId} based on placement_dimensions.`);
+            // For sticker/poster products, we'll calculate dimensions per variant instead of using common data
             commonTemplateData = null; // Will be calculated per variant
         } else if (mockupTemplates.length > 0) {
             const firstTemplate = mockupTemplates[0];
@@ -172,8 +172,8 @@ export async function seedProductData(env, productId, targetColors) {
                             }
                             // --------------------------------------------------
 
-                            // Pass productId to uploadToR2
-                            imageData.r2_url = await uploadToR2(env, productId, filename, arrayBuffer, contentType); // Use new filename
+                            // Pass folder and filename to uploadToR2
+                            imageData.r2_url = await uploadToR2(env, `product-templates/${productId}`, filename, arrayBuffer, contentType); // Use new filename
                             uniqueImageUrlsToUpload.set(printfulUrl, imageData); // Update map with R2 URL
                         } catch (uploadError) {
                             console.error(`Failed to process image ${printfulUrl}: ${uploadError.message}`);
@@ -271,32 +271,32 @@ export async function seedProductData(env, productId, targetColors) {
                 }
             }
 
-            // Size Filter (only for non-sticker types, using apparelSizes for now)
-            if (productType !== 'STICKER') {
+            // Size Filter (only for apparel types)
+            if (productType === 'T-SHIRT') {
                  if (!variant.size || !apparelSizes.includes(variant.size)) {
                      return false;
                  }
             }
 
-            // For sticker products (358, 505), skip variants that can't be calculated
-            if (['358', '505'].includes(productId.toString())) {
-                const stickerDimensions = calculateStickerDimensions(variant);
-                if (!stickerDimensions) return false; // Skip if dimensions can't be calculated or rectangular
+            // For dynamic dimension products, skip variants that can't be calculated
+            if (['358', '505', '1', '171'].includes(productId.toString())) {
+                const dimensions = calculateProductDimensions(variant);
+                if (!dimensions) return false; // Skip if dimensions can't be calculated
             }
 
             // If we passed all applicable filters, include the variant
             return true;
         }).map(variant => {
-            // Calculate variant-specific template data for sticker products
-            const variantTemplateData = ['358', '505'].includes(productId.toString()) ? 
-                calculateStickerDimensions(variant) : commonTemplateData;
+            // Calculate variant-specific template data for dynamic dimension products
+            const variantTemplateData = ['358', '505', '1', '171'].includes(productId.toString()) ? 
+                calculateProductDimensions(variant) : commonTemplateData;
 
             return {
                 printful_variant_id: variant.id,
                 printful_product_id: variant.catalog_product_id,
                 size: variant.size,
-                color_name: variant.color,
-                color_code: variant.color_code,
+                color_name: variant.color || 'White',  // Default to White for posters
+                color_code: variant.color_code || '#FFFFFF',  // Default to white color code
                 printful_price: priceMap[variant.id] ? parseFloat(priceMap[variant.id]) : null,
                 inventory_count: availabilityMap[variant.id]?.isInStock ? DEFAULT_INVENTORY : 0,
                 template_image_url: variantTemplateData?.template_image_url || null,
@@ -330,8 +330,26 @@ export async function seedProductData(env, productId, targetColors) {
             console.log(`Generated slug '${productSlug}' for Printful Product ID ${productId}`);
         }
         
+        // Download and upload product image to R2
+        let productImageR2Url = null;
+        if (productData.data?.image) {
+            try {
+                const { arrayBuffer, contentType } = await downloadImage(productData.data.image);
+                // Extract just the file extension properly
+                const urlParts = new URL(productData.data.image);
+                const pathParts = urlParts.pathname.split('/');
+                const filename = pathParts[pathParts.length - 1];
+                const extension = filename.includes('.') ? filename.split('.').pop() : 'jpg';
+                const imageFilename = `product_${productId}_main.${extension}`;
+                productImageR2Url = await uploadToR2(env, 'products', imageFilename, arrayBuffer, contentType);
+                console.log(`Uploaded product image to R2: ${productImageR2Url}`);
+            } catch (error) {
+                console.error(`Failed to upload product image: ${error.message}`);
+            }
+        }
+
         const productInsertStmt = db.prepare(
-            'INSERT INTO products (name, slug, printful_product_id, status) VALUES (?, ?, ?, ?) ON CONFLICT(printful_product_id) DO UPDATE SET name=excluded.name, slug=excluded.slug, status=excluded.status, updated_at=CURRENT_TIMESTAMP RETURNING id'
+            'INSERT INTO products (name, slug, printful_product_id, image_url, status) VALUES (?, ?, ?, ?, ?) ON CONFLICT(printful_product_id) DO UPDATE SET name=excluded.name, slug=excluded.slug, image_url=excluded.image_url, status=excluded.status, updated_at=CURRENT_TIMESTAMP RETURNING id'
         );
 
         // Corrected SQL Statement
@@ -364,7 +382,7 @@ export async function seedProductData(env, productId, targetColors) {
 
         // 4. Execute D1 Queries
         console.log(`Inserting/Updating product: ${processedProductName} (Slug: ${productSlug})`);
-        const productResult = await productInsertStmt.bind(processedProductName, productSlug, productId, 'active').first();
+        const productResult = await productInsertStmt.bind(processedProductName, productSlug, productId, productImageR2Url, 'active').first();
 
         if (!productResult?.id) {
             throw new Error('Failed to insert or retrieve product ID from D1.');
@@ -410,218 +428,6 @@ export async function seedProductData(env, productId, targetColors) {
     }
 }
 
-const TARGET_PRINTFUL_PRODUCT_ID = 586; // Comfort Colors 1717
-const TARGET_COLORS = [ // From Frontend Day 1 Standup
-  'Berry', 'Black', 'Blue Jean', 'Brick',
-  'Grey', 'Moss', 'True Navy', 'White',
-];
-const TARGET_SIZES = ['S', 'M', 'L', 'XL']; // Defined in Backend Day 2 Standup
-const TARGET_TECHNIQUE = 'dtg'; // Defined in Backend Day 1 Standup
-
-async function seedDatabase(db, env) {
-  console.log(`Starting seed process for Printful Product ID: ${TARGET_PRINTFUL_PRODUCT_ID}...`);
-
-  try {
-    // --- 1. Fetch Product Info ---
-    // (Keep existing product fetching logic if necessary, or simplify if only one product is needed)
-    // For MVP, we assume product 'Comfort Colors 1717' (ID 586) is already in DB or we create it here.
-    // Ensure the base product exists
-    const productName = "Unisex Garment-Dyed Heavyweight T-Shirt"; // Name for Comfort Colors 1717
-    const productSlug = "comfort-colors-1717"; // Example slug
-    let productResult = await db.prepare("SELECT id FROM products WHERE printful_product_id = ?")
-                                 .bind(TARGET_PRINTFUL_PRODUCT_ID).first();
-
-    let productId;
-    if (!productResult) {
-      console.log(`Product ${TARGET_PRINTFUL_PRODUCT_ID} not found, inserting...`);
-      const insertResult = await db.prepare(
-        "INSERT INTO products (printful_product_id, name, slug, status) VALUES (?, ?, ?, 'active') RETURNING id"
-      ).bind(TARGET_PRINTFUL_PRODUCT_ID, productName, productSlug).first();
-      productId = insertResult.id;
-      console.log(`Inserted product with ID: ${productId}`);
-    } else {
-      productId = productResult.id;
-      console.log(`Found existing product with ID: ${productId}`);
-    }
-
-    // --- 2. Fetch Variants & Prices ---
-    console.log('Fetching variants from Printful...');
-    const allVariants = await getPrintfulProductVariants(TARGET_PRINTFUL_PRODUCT_ID, env.PRINTFUL_API_KEY);
-    console.log(`Fetched ${allVariants.length} total variants.`);
-
-    console.log('Fetching prices from Printful...');
-    const variantPrices = await getPrintfulProductPrices(TARGET_PRINTFUL_PRODUCT_ID, env.PRINTFUL_API_KEY); // Assuming this returns a map { printful_variant_id: price }
-    console.log(`Fetched prices for ${Object.keys(variantPrices).length} variants.`);
-
-    // --- 3. Fetch Mockup Template Data ---
-    console.log('Fetching mockup template data (front placement) from Printful...');
-    const mockupTemplates = await getPrintfulMockupTemplates(TARGET_PRINTFUL_PRODUCT_ID, env.PRINTFUL_API_KEY, 'front');
-    console.log(`Fetched ${mockupTemplates.length} template definitions for 'front' placement.`);
-
-    if (mockupTemplates.length === 0) {
-      console.warn("Warning: No mockup template data found for 'front' placement. Cannot populate template/print area columns.");
-      // Decide how to proceed: skip populating these fields or throw error? For now, skip.
-    }
-
-    // Process template data into a usable format
-    // We need: common overlay image, boundaries, and variant-specific texture URLs
-    let commonTemplateData = null;
-    const variantTextureMap = {}; // { printful_variant_id: texture_url }
-
-    if (mockupTemplates.length > 0) {
-        // Assume the first template has the common data we need (boundaries, overlay image)
-        const firstTemplate = mockupTemplates[0];
-        commonTemplateData = {
-            template_image_url: firstTemplate.image_url,
-            template_width: firstTemplate.template_width,
-            template_height: firstTemplate.template_height,
-            print_area_width: firstTemplate.print_area_width,
-            print_area_height: firstTemplate.print_area_height,
-            print_area_top: firstTemplate.print_area_top,
-            print_area_left: firstTemplate.print_area_left,
-        };
-        console.log("Common Template Data:", commonTemplateData);
-
-        // Map texture URLs to variants that use them
-        for (const template of mockupTemplates) {
-            if (template.background_url) {
-                for (const variantId of template.catalog_variant_ids) {
-                    variantTextureMap[variantId] = template.background_url;
-                }
-            }
-        }
-        console.log(`Mapped ${Object.keys(variantTextureMap).length} variants with specific texture URLs.`);
-    }
-
-
-    // --- 4. Filter and Insert/Update Variants ---
-    const variantsToSeed = allVariants.filter(variant =>
-      TARGET_COLORS.includes(variant.color) &&
-      TARGET_SIZES.includes(variant.size) &&
-      variantPrices[variant.id] !== undefined // Ensure we have a price
-      // Add technique filtering if available in variant data, otherwise assume DTG for this product
-    );
-
-    console.log(`Filtered down to ${variantsToSeed.length} variants matching target colors/sizes/price.`);
-
-    if (variantsToSeed.length === 0) {
-      console.warn('Warning: No variants matched the filtering criteria. Check TARGET_COLORS, TARGET_SIZES, and Printful data.');
-      return { success: false, message: 'No matching variants found to seed.' };
-    }
-
-    // Prepare batch insert/update statement
-    const stmt = db.prepare(`
-      INSERT INTO product_variants (
-        product_id, printful_variant_id, printful_product_id, color_name,
-        color_code, size, printful_price, inventory_count, status,
-        template_image_url, template_texture_url, template_width, template_height,
-        print_area_width, print_area_height, print_area_top, print_area_left
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(printful_variant_id) DO UPDATE SET
-        product_id = excluded.product_id,
-        printful_product_id = excluded.printful_product_id,
-        color_name = excluded.color_name,
-        color_code = excluded.color_code,
-        size = excluded.size,
-        printful_price = excluded.printful_price,
-        inventory_count = excluded.inventory_count, -- Or fetch live inventory here
-        status = excluded.status,
-        template_image_url = excluded.template_image_url,
-        template_texture_url = excluded.template_texture_url,
-        template_width = excluded.template_width,
-        template_height = excluded.template_height,
-        print_area_width = excluded.print_area_width,
-        print_area_height = excluded.print_area_height,
-        print_area_top = excluded.print_area_top,
-        print_area_left = excluded.print_area_left,
-        updated_at = CURRENT_TIMESTAMP
-    `);
-
-    const batchData = variantsToSeed.map(variant => {
-        const price = variantPrices[variant.id];
-        const templateData = commonTemplateData || {}; // Use empty object if no template data fetched
-        const textureUrl = variantTextureMap[variant.id] || null;
-        const inventoryCount = 100; // Placeholder inventory
-        const status = 'available'; // Placeholder status
-
-        return stmt.bind(
-            productId,
-            variant.id,
-            TARGET_PRINTFUL_PRODUCT_ID, // Assuming variant.catalog_product_id exists, or use constant
-            variant.color,
-            variant.color_code || '#000000', // Default color code if missing
-            variant.size,
-            price,
-            inventoryCount,
-            status,
-            templateData.template_image_url || null,
-            textureUrl,
-            templateData.template_width || null,
-            templateData.template_height || null,
-            templateData.print_area_width || null,
-            templateData.print_area_height || null,
-            templateData.print_area_top || null,
-            templateData.print_area_left || null
-        );
-    });
-
-    console.log(`Executing batch insert/update for ${batchData.length} variants...`);
-    await db.batch(batchData);
-    console.log('Batch insert/update complete.');
-
-    console.log('Seed process finished successfully.');
-    return { success: true, message: `Seeded/Updated ${batchData.length} variants for product ID ${productId}.` };
-
-  } catch (error) {
-    console.error('Error during seeding process:', error);
-    if (error.cause) {
-        console.error('Caused by:', error.cause);
-    }
-    // Attempt to log D1 specific errors if available
-     if (error.message && error.message.includes('D1_ERROR')) {
-       console.error('D1 Error details:', error);
-     }
-    return { success: false, message: `Seeding failed: ${error.message}` };
-  }
-}
-
-export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-    if (request.method === 'POST' && url.pathname === '/api/admin/seed-product') {
-        // Simple security check (replace with proper auth later)
-        if (request.headers.get('X-Admin-Secret') !== env.ADMIN_AUTH_KEY) {
-            return new Response('Unauthorized', { status: 401 });
-        }
-
-        try {
-            const result = await seedProductData(env, TARGET_PRINTFUL_PRODUCT_ID, TARGET_COLORS);
-            return new Response(JSON.stringify(result), {
-                headers: { 'Content-Type': 'application/json' },
-                status: result.success ? 200 : 500,
-            });
-        } catch (e) {
-            console.error('Seeding endpoint error:', e);
-            return new Response(JSON.stringify({ success: false, message: e.message }), { status: 500 });
-        }
-    }
-    return new Response('Not Found', { status: 404 });
-  },
-
-  // Add scheduled handler if needed, e.g., for daily updates
-   async scheduled(event, env, ctx) {
-     // Implement daily price/inventory updates here if required
-     console.log(`Scheduled task triggered: ${event.cron}`);
-     // Example: await updateProductVariants(env.DB, env);
-   }
-};
-
-// Helper to ensure updateProductVariants is defined if used in scheduled
-async function updateProductVariants(db, env) {
-    console.log("Running scheduled task to update product variants (price/inventory)...");
-    // Add logic from BACKEND_DAY_2.md's scheduled.js here
-    console.log("Scheduled task finished.");
-}
 
 // Helper function to generate SHA-256 hash (needed for filename generation)
 // Uses the Web Crypto API available in Workers
@@ -634,7 +440,7 @@ async function sha256(message) {
 }
 
 // Helper to upload to R2 and return public URL
-async function uploadToR2(env, productId, filename, arrayBuffer, contentType) {
+async function uploadToR2(env, folder, filename, arrayBuffer, contentType) {
     if (!env.R2_BUCKET) {
         throw new Error('R2_BUCKET environment binding is not configured.');
     }
@@ -642,7 +448,7 @@ async function uploadToR2(env, productId, filename, arrayBuffer, contentType) {
         throw new Error('R2_PUBLIC_URL environment variable is not set.');
     }
 
-    const r2Key = `product-templates/${productId}/${filename}`; // Create folder structure
+    const r2Key = `${folder}/${filename}`; // Create folder structure
 
     try {
         console.log(`Uploading ${r2Key} to R2...`); // Log the full key
@@ -655,4 +461,6 @@ async function uploadToR2(env, productId, filename, arrayBuffer, contentType) {
         console.error(`Failed to upload ${r2Key} to R2:`, error);
         throw new Error(`R2 upload failed for ${r2Key}: ${error.message}`);
     }
-} 
+}
+
+ 

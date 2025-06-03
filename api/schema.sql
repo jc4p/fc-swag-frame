@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS products (
     printful_product_id INTEGER UNIQUE NOT NULL,  -- The ID from Printful API
     name TEXT NOT NULL,                           -- e.g., "Unisex Garment-Dyed Heavyweight T-Shirt"
     slug TEXT UNIQUE NOT NULL,                    -- URL-friendly identifier, e.g., "unisex-heavyweight-tee"
+    image_url TEXT,                               -- Product image URL hosted on our R2 bucket
     status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'inactive', 'archived')),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP

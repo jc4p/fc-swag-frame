@@ -16,7 +16,7 @@ publicRoutes.get('/products', async (c) => {
     try {
         // Fetch all active products
         const { results: products } = await env.DB.prepare(
-            "SELECT id, name, slug, printful_product_id FROM products WHERE status = 'active'"
+            "SELECT id, name, slug, printful_product_id, image_url FROM products WHERE status = 'active'"
         ).all();
 
         if (!products || products.length === 0) {
@@ -92,6 +92,7 @@ publicRoutes.get('/products', async (c) => {
                 printful_product_id: product.printful_product_id,
                 name: product.name,
                 slug: product.slug,
+                image_url: product.image_url,
                 options: options,
                 colors: colors,
             };

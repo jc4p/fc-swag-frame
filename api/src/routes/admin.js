@@ -46,10 +46,22 @@ adminRoutes.post('/import-product/:productId', async (c) => {
     console.log(`Received request to import product ID: ${productId}`);
 
     try {
-        // Assuming seedProductData can handle product-specific logic
-        // and may not require targetColors for all product types.
-        // Passing an empty array or null if colors are not applicable for the given product.
-        const result = await seedProductData(env, productId, []); 
+        // Define target colors for specific products
+        let targetColors = [];
+        
+        // For T-shirts (product 586), use the specific colors from the design spec
+        if (productId === '586') {
+            targetColors = [
+                'Berry', 'Black', 'Blue Jean', 'Brick',
+                'Grey', 'Moss', 'True Navy', 'White',
+            ];
+            console.log(`Importing product ${productId} with target colors: ${targetColors.join(', ')}`);
+        } else {
+            // For other products (stickers, etc.), import all available colors
+            console.log(`Importing product ${productId} with all available colors`);
+        }
+        
+        const result = await seedProductData(env, productId, targetColors); 
         console.log('Import Result:', result);
         if (result.success) {
             return c.json(result);

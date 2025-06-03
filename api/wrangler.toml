@@ -23,6 +23,7 @@ database_id = "42264697-0923-4fbc-8c55-bb904eee9ddf"
 [[r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "swag-images"
+preview_bucket_name = "swag-images"
 
 # Durable Object bindings
 [[migrations]]
