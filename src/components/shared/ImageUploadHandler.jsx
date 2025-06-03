@@ -42,13 +42,13 @@ export function ImageUploadHandler({
           logToOverlay("FileReader: Triggered onImageUpload callback.");
         } else {
           logToOverlay("FileReader Error: onloadend fired but reader.result is empty.");
-          alert("Error reading file. The file might be corrupted or in an unsupported format.");
+          logToOverlay("Error reading file. The file might be corrupted or in an unsupported format.");
         }
       };
 
       reader.onerror = (error) => {
         logToOverlay(`FileReader Error: Failed to read ${file.name}. Error: ${error}`);
-        alert("Could not read the selected file. Please try a different image.");
+        logToOverlay("Could not read the selected file. Please try a different image.");
       };
 
       reader.readAsDataURL(file);

@@ -63,7 +63,16 @@ export function KonvaMultiImageEditor({
     const fallbackWidth = 400;
     const fallbackHeight = 400;
     
-    return {
+    // Debug logging
+    console.log('KonvaMultiImageEditor - selectedVariant:', selectedVariant);
+    console.log('Template dimensions from variant:', {
+      template_width: selectedVariant.template_width,
+      template_height: selectedVariant.template_height,
+      print_area_width: selectedVariant.print_area_width,
+      print_area_height: selectedVariant.print_area_height
+    });
+    
+    const effective = {
       ...selectedVariant,
       template_width: selectedVariant.template_width || fallbackWidth,
       template_height: selectedVariant.template_height || fallbackHeight,
@@ -72,6 +81,9 @@ export function KonvaMultiImageEditor({
       print_area_width: selectedVariant.print_area_width || selectedVariant.template_width || fallbackWidth,
       print_area_height: selectedVariant.print_area_height || selectedVariant.template_height || fallbackHeight,
     };
+    
+    console.log('KonvaMultiImageEditor - effectiveVariant:', effective);
+    return effective;
   }, [selectedVariant]);
 
   // Effect to update stage size & print area
@@ -346,7 +358,7 @@ export function KonvaMultiImageEditor({
       reader.readAsDataURL(resultBlob);
     } catch (error) {
       console.error("Failed to remove background:", error);
-      alert(`Error removing background: ${error.message}`);
+      logToOverlay(`Error removing background: ${error.message}`);
     }
   };
 

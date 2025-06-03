@@ -328,7 +328,6 @@ export function KonvaImageEditor({
     } catch (error) {
       logToOverlay(`Remove Background Error: ${error.message}`);
       console.error("Failed to remove background:", error);
-      alert(`Error removing background: ${error.message}`);
     }
   };
 

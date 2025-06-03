@@ -17,7 +17,7 @@ const DEFAULT_STICKER_COMMISSION = 30;
  * Renders sticker sheet options with multi-image support
  * Uses the new unified component architecture
  */
-export function OptionsStickerSheet({ product }) {
+export function OptionsStickerSheet({ product, onBack }) {
   const { logToOverlay } = useDebug();
   const { publishMultiDesign, isLoadingPublish, isSigningIn, canPublish } = usePublishMultiDesign();
 
@@ -32,8 +32,20 @@ export function OptionsStickerSheet({ product }) {
   // Refs
   const stageRef = useRef(null);
   
-  // Get the main variant for sticker sheets
-  const mainVariant = product.variants && product.variants.length > 0 ? product.variants[0] : product;
+  // Get the main variant for sticker sheets (from first color's variants)
+  const mainVariant = product.colors && product.colors.length > 0 && product.colors[0].variants && product.colors[0].variants.length > 0 
+    ? product.colors[0].variants[0] 
+    : product;
+    
+  // Debug logging
+  console.log('OptionsStickerSheet - product:', product);
+  console.log('OptionsStickerSheet - mainVariant:', mainVariant);
+  console.log('OptionsStickerSheet - mainVariant dimensions:', {
+    template_width: mainVariant?.template_width,
+    template_height: mainVariant?.template_height,
+    print_area_width: mainVariant?.print_area_width,
+    print_area_height: mainVariant?.print_area_height
+  });
 
   // --- Price Calculation ---
   const calculateCurrentPrice = useCallback((rate) => {
@@ -83,7 +95,7 @@ export function OptionsStickerSheet({ product }) {
 
   const handlePublishClick = () => {
     // For sticker sheets, we use the multi-image publish logic
-    publishMultiDesign(multiImageAttrs, mainVariant, product, userImages, stageRef);
+    publishMultiDesign(multiImageAttrs, mainVariant, product, userImages, stageRef, commissionRate);
   };
 
   const handleCommissionRateChange = (rate) => {
@@ -95,11 +107,11 @@ export function OptionsStickerSheet({ product }) {
       <div>
         {/* Header */}
         <div className={styles.header}>
-          <div className={styles.closeButton}>
+          <button className={styles.closeButton} onClick={onBack}>
             <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
               <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path>
             </svg>
-          </div>
+          </button>
           <h2 className={styles.headerTitle}>Create Sticker Sheet</h2>
         </div>
 

@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useDebug } from '@/contexts/DebugContext';
 import { ImageUploadHandler } from '@/components/shared/ImageUploadHandler';
 import { KonvaImageEditor } from '@/components/shared/KonvaImageEditor';
-import { ColorSelector } from '@/components/shared/ColorSelector';
 import { CommissionSelector } from '@/components/shared/CommissionSelector';
 import { PublishButton } from '@/components/shared/PublishButton';
 import { usePublishDesign } from '@/hooks/usePublishDesign';
@@ -12,14 +11,38 @@ import { calculatePrice, calculateArtistEarnings, DEFAULT_CONSTANTS } from '@/li
 import styles from './ProductOptions.module.css';
 
 /**
- * Renders interactive options, handles image upload/manipulation via Konva.js, and publishing.
+ * Size selector component for Kiss-Cut Stickers
  */
-export function OptionsShirt({ product, onBack }) {
+function SizeSelector({ variants, selectedSize, onSizeSelect, title = "Size" }) {
+  if (!variants || variants.length === 0) return null;
+
+  return (
+    <div className={styles.selectorContainer}>
+      <h4 className={styles.selectorTitle}>{title}</h4>
+      <div className={styles.selectorOptions}>
+        {variants.map((variant) => (
+          <button
+            key={variant.id}
+            className={`${styles.selectorButton} ${selectedSize === variant.size ? styles.selected : ''}`}
+            onClick={() => onSizeSelect(variant.size)}
+          >
+            <span className={styles.sizeLabel}>{variant.size}</span>
+            <span className={styles.priceLabel}>${variant.base_price}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Renders Kiss-Cut Sticker options with size selection and single image editor
+ */
+export function OptionsKissCutSticker({ product, onBack }) {
   const { logToOverlay } = useDebug();
   const { publishDesign, isLoadingPublish, isSigningIn, canPublish } = usePublishDesign();
 
   // --- State --- 
-  const [selectedColorName, setSelectedColorName] = useState(null);
   const [selectedSize, setSelectedSize] = useState(null);
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [uploadedImageDataUrl, setUploadedImageDataUrl] = useState(null);
@@ -33,61 +56,57 @@ export function OptionsShirt({ product, onBack }) {
   // Ref for stage (needed for publishing)
   const stageRef = useRef(null);
 
+  // Get available sizes from the first color (Kiss-Cut Stickers only have white)
+  const whiteVariants = useMemo(() => {
+    return product.colors && product.colors.length > 0 ? product.colors[0].variants : [];
+  }, [product.colors]);
+  
+  const availableSizes = useMemo(() => {
+    return whiteVariants.map(v => v.size);
+  }, [whiteVariants]);
+
   // --- Helper: Calculate Price --- 
   const calculateCurrentPrice = useCallback((rate) => {
      if (!selectedVariant) return null;
      const baseCost = selectedVariant.base_price || DEFAULT_CONSTANTS.RAW_COST;
      const price = calculatePrice(rate, baseCost, DEFAULT_CONSTANTS.PLATFORM_FEE);
-     console.log('calculateCurrentPrice called with rate:', rate, 'baseCost:', baseCost, 'calculated price:', price);
+     console.log('Kiss-Cut calculateCurrentPrice called with rate:', rate, 'baseCost:', baseCost, 'calculated price:', price);
      return price;
   }, [selectedVariant]);
 
   // --- Effects for Selections & Pricing ---
-  // Initial color selection
+  // Auto-select first size
   useEffect(() => {
-    if (product.colors && product.colors.length > 0 && !selectedColorName) {
-      setSelectedColorName(product.colors[0].color_name);
+    if (availableSizes.length > 0 && !selectedSize) {
+      // Default to middle size (4″×4″) if available, otherwise first size
+      const defaultSize = availableSizes.includes('4″×4″') ? '4″×4″' : availableSizes[0];
+      setSelectedSize(defaultSize);
     }
-  }, [product.colors, selectedColorName]);
-
-  const selectedColor = product.colors.find(c => c.color_name === selectedColorName);
-  const availableSizes = selectedColor ? selectedColor.variants.map(v => v.size) : [];
-
-  // Auto-select size
-  useEffect(() => {
-    if (selectedColor && availableSizes.length > 0) {
-      const defaultSize = availableSizes.includes('M') ? 'M' : availableSizes[0];
-      if (selectedSize !== defaultSize) {
-        setSelectedSize(defaultSize);
-      }
-    } else {
-      setSelectedSize(null);
-    }
-  }, [selectedColor, availableSizes, selectedSize]);
+  }, [availableSizes, selectedSize]);
 
   // Find and store selected variant object
   useEffect(() => {
-    if (selectedColor && selectedSize) {
-      const variant = selectedColor.variants.find(v => v.size === selectedSize);
+    if (selectedSize && whiteVariants.length > 0) {
+      const variant = whiteVariants.find(v => v.size === selectedSize);
       setSelectedVariant(variant || null);
     } else {
       setSelectedVariant(null);
     }
-  }, [selectedColor, selectedSize]);
+  }, [selectedSize, whiteVariants]);
 
   // Calculate price when variant or commission changes
   useEffect(() => {
-    console.log('Price calculation effect triggered. Commission rate:', commissionRate, 'Selected variant:', selectedVariant);
+    console.log('Kiss-Cut price calculation effect triggered. Commission rate:', commissionRate, 'Selected variant:', selectedVariant);
     const currentPrice = calculateCurrentPrice(commissionRate);
     if (currentPrice !== null) {
       setEstimatedPrice(currentPrice);
       const earnings = calculateArtistEarnings(currentPrice, commissionRate);
       setArtistEarnings(earnings);
-      console.log('Price updated - Estimated price:', currentPrice, 'Artist earnings:', earnings);
+      console.log('Kiss-Cut price updated - Estimated price:', currentPrice, 'Artist earnings:', earnings);
     } else {
       setEstimatedPrice(null);
       setArtistEarnings(null);
-      console.log('Price set to null');
+      console.log('Kiss-Cut price set to null');
     }
   }, [selectedVariant, commissionRate, calculateCurrentPrice]);
 
@@ -104,22 +123,20 @@ export function OptionsShirt({ product, onBack }) {
     setHasBackgroundBeenRemoved(false);
   };
 
-  const handleBackgroundRemove = (processedDataUrl) => {
-    setUploadedImageDataUrl(processedDataUrl);
-    setHasBackgroundBeenRemoved(true);
-  };
-
   const handleImageUpdate = (attrs) => {
     setUserImageAttrs(attrs);
   };
 
+  const handleBackgroundRemove = (processedDataUrl) => {
+    setUploadedImageDataUrl(processedDataUrl);
+    setHasBackgroundBeenRemoved(true);
+  };
 
   const handlePublishClick = () => {
     publishDesign(userImageAttrs, selectedVariant, product, uploadedImageDataUrl, stageRef, commissionRate);
   };
 
   const handleCommissionRateChange = (rate) => {
-    console.log('Commission rate change handler called with rate:', rate, 'Previous rate:', commissionRate);
     setCommissionRate(rate);
   };
 
@@ -133,7 +150,7 @@ export function OptionsShirt({ product, onBack }) {
               <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path>
             </svg>
           </button>
-          <h2 className={styles.headerTitle}>Create Listing</h2>
+          <h2 className={styles.headerTitle}>Create Kiss-Cut Sticker</h2>
         </div>
 
         {/* Preview Section */}
@@ -142,11 +159,9 @@ export function OptionsShirt({ product, onBack }) {
             onImageUpload={handleImageUpload}
             onImageRemove={handleImageRemove}
             uploadedImageDataUrl={uploadedImageDataUrl}
-            className={styles.previewWrapper}
           >
             <KonvaImageEditor
               selectedVariant={selectedVariant}
-              selectedColor={selectedColor}
               uploadedImageDataUrl={uploadedImageDataUrl}
               onImageUpdate={handleImageUpdate}
               onImageRemove={handleImageRemove}
@@ -176,11 +191,11 @@ export function OptionsShirt({ product, onBack }) {
 
         {/* Customize Section */}
         <h3 className={styles.sectionHeader}>Customize</h3>
-        <ColorSelector
-          colors={product.colors}
-          selectedColorName={selectedColorName}
-          onColorSelect={setSelectedColorName}
-          title=""
+        <SizeSelector
+          variants={whiteVariants}
+          selectedSize={selectedSize}
+          onSizeSelect={setSelectedSize}
+          title="Size"
         />
 
         {/* Commission Section */}
@@ -208,7 +223,7 @@ export function OptionsShirt({ product, onBack }) {
           isLoading={isLoadingPublish}
           isSigningIn={isSigningIn}
         >
-          Create Listing
+          Create Sticker
         </PublishButton>
         <div className={styles.spacer}></div>
       </div>

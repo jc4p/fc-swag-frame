@@ -1,0 +1,159 @@
+/* Profile page components styling */
+
+/* Profile Header */
+.header {
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid #eaedf1;
+  background-color: #f9fafb;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.avatar {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background-color: #5c718a;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.userDetails {
+  flex: 1;
+}
+
+.username {
+  color: #101418;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0 0 0.25rem 0;
+}
+
+.memberSince {
+  color: #5c718a;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.43;
+  margin: 0;
+}
+
+.title {
+  color: #101418;
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.27;
+  letter-spacing: -0.015em;
+  margin: 0 0 0.5rem 0;
+}
+
+.subtitle {
+  color: #5c718a;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Profile Tabs */
+.tabContainer {
+  padding: 1rem;
+}
+
+.tabHeaders {
+  display: flex;
+  border-bottom: 1px solid #eaedf1;
+  margin-bottom: 1.5rem;
+}
+
+.tabButton {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: none;
+  color: #5c718a;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.5;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.tabButton:hover {
+  color: #101418;
+}
+
+.tabButton.active {
+  color: #101418;
+  border-bottom-color: #101418;
+}
+
+.tabCount {
+  margin-left: 0.5rem;
+  font-size: 0.875rem;
+  color: #5c718a;
+}
+
+.tabContent {
+  min-height: 300px;
+}
+
+/* Empty State */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.emptyIcon {
+  color: #5c718a;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+}
+
+.emptyTitle {
+  color: #101418;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0 0 0.5rem 0;
+}
+
+.emptyDescription {
+  color: #5c718a;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.43;
+  margin: 0 0 1.5rem 0;
+}
+
+.createButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  background-color: #101418;
+  color: white;
+  text-decoration: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: background-color 0.2s ease;
+}
+
+.createButton:hover {
+  background-color: #2d3748;
+}

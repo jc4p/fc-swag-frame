@@ -19,12 +19,12 @@ export function usePublishMultiDesign() {
   const [isLoadingPublish, setIsLoadingPublish] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
-  const publishMultiDesign = async (multiImageAttrs, selectedVariant, product, userImages, stageRef) => {
+  const publishMultiDesign = async (multiImageAttrs, selectedVariant, product, userImages, stageRef, commissionRate) => {
     logToOverlay("Multi-image publish button clicked.");
 
     // Ensure we have the essentials
     if (!multiImageAttrs || multiImageAttrs.length === 0 || !selectedVariant || !product || userImages.length === 0) {
-      alert("Please upload at least one sticker image first.");
+      logToOverlay("Please upload at least one sticker image first.");
       return;
     }
 
@@ -63,12 +63,12 @@ export function usePublishMultiDesign() {
         logToOverlay("User FID:", userFid);
 
         logToOverlay("User successfully signed in and authenticated.");
-        alert("Sign-in successful! You can now publish your sticker sheet.");
+        logToOverlay("Sign-in successful! You can now publish your sticker sheet.");
 
       } catch (error) {
         logToOverlay(`Sign-In Error: ${error.message}`);
         console.error("Sign-In Flow Error:", error);
-        alert(`Sign-in failed: ${error.message}`);
+        logToOverlay(`Sign-in failed: ${error.message}`);
       } finally {
         setIsSigningIn(false);
       }
@@ -152,26 +152,47 @@ export function usePublishMultiDesign() {
       }
       logToOverlay("Using auth token from context.");
 
-      // Make API Call
+      // Step 1: Create the design
       const response = await fetch(`${apiUrl}/api/designs`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${authToken}` },
         body: formData,
       });
 
-      // Handle Response
+      // Handle Create Response
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown API error' }));
         throw new Error(errorData.error || `API Error: ${response.status}`);
       }
       const result = await response.json();
-      logToOverlay(`Sticker sheet published successfully: ${JSON.stringify(result)}`);
-      alert(`Success! Sticker Sheet Design ID: ${result.designId}`);
+      logToOverlay(`Sticker sheet design created successfully: ${JSON.stringify(result)}`);
+      
+      // Step 2: Publish the design with commission rate
+      const designId = result.designId;
+      const publishResponse = await fetch(`${apiUrl}/api/designs/${designId}/publish`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          royalty_percent: commissionRate
+        }),
+      });
+
+      // Handle Publish Response
+      if (!publishResponse.ok) {
+        const publishErrorData = await publishResponse.json().catch(() => ({ error: 'Unknown publish API error' }));
+        throw new Error(publishErrorData.error || `Publish API Error: ${publishResponse.status}`);
+      }
+      const publishResult = await publishResponse.json();
+      logToOverlay(`Sticker sheet published successfully: ${JSON.stringify(publishResult)}`);
+      logToOverlay(`Success! Sticker Sheet Design ID: ${designId}, Retail Price: $${publishResult.pricing.retail_price}`);
 
     } catch (error) {
       logToOverlay(`Multi-Design Publish Error: ${error.message}`);
       console.error("Failed to publish multi-design:", error);
-      alert(`Error publishing sticker sheet: ${error.message}`);
+      logToOverlay(`Error publishing sticker sheet: ${error.message}`);
     } finally {
       setIsLoadingPublish(false); 
     }

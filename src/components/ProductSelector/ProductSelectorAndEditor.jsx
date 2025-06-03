@@ -63,6 +63,6 @@ export function ProductSelectorAndEditor({ products, error }) {
 
   // A product is selected, show the editor
   return (
-    <ProductOptionsLoader product={selectedProduct} />
+    <ProductOptionsLoader product={selectedProduct} onBack={handleBackToSelection} />
   );
 } 

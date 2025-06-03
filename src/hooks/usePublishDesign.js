@@ -19,12 +19,12 @@ export function usePublishDesign() {
   const [isLoadingPublish, setIsLoadingPublish] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
-  const publishDesign = async (userImageAttrs, selectedVariant, product, uploadedImageDataUrl, stageRef) => {
+  const publishDesign = async (userImageAttrs, selectedVariant, product, uploadedImageDataUrl, stageRef, commissionRate) => {
     logToOverlay("Publish button clicked.");
 
     // Ensure we have the essentials
     if (!userImageAttrs || !selectedVariant || !product) {
-      alert("Please select variant and upload/position an image first.");
+      logToOverlay("Please select variant and upload/position an image first.");
       return;
     }
 
@@ -63,12 +63,12 @@ export function usePublishDesign() {
         logToOverlay("User FID:", userFid);
 
         logToOverlay("User successfully signed in and authenticated.");
-        alert("Sign-in successful! You can now publish your design.");
+        logToOverlay("Sign-in successful! You can now publish your design.");
 
       } catch (error) {
         logToOverlay(`Sign-In Error: ${error.message}`);
         console.error("Sign-In Flow Error:", error);
-        alert(`Sign-in failed: ${error.message}`);
+        logToOverlay(`Sign-in failed: ${error.message}`);
       } finally {
         setIsSigningIn(false);
       }
@@ -143,26 +143,47 @@ export function usePublishDesign() {
       }
       logToOverlay("Using auth token from context.");
 
-      // Make API Call
+      // Step 1: Create the design
       const response = await fetch(`${apiUrl}/api/designs`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${authToken}` },
         body: formData,
       });
 
-      // Handle Response
+      // Handle Create Response
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown API error' }));
         throw new Error(errorData.error || `API Error: ${response.status}`);
       }
       const result = await response.json();
-      logToOverlay(`Design published successfully: ${JSON.stringify(result)}`);
-      alert(`Success! Design ID: ${result.designId}`);
+      logToOverlay(`Design created successfully: ${JSON.stringify(result)}`);
+      
+      // Step 2: Publish the design with commission rate
+      const designId = result.designId;
+      const publishResponse = await fetch(`${apiUrl}/api/designs/${designId}/publish`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          royalty_percent: commissionRate
+        }),
+      });
+
+      // Handle Publish Response
+      if (!publishResponse.ok) {
+        const publishErrorData = await publishResponse.json().catch(() => ({ error: 'Unknown publish API error' }));
+        throw new Error(publishErrorData.error || `Publish API Error: ${publishResponse.status}`);
+      }
+      const publishResult = await publishResponse.json();
+      logToOverlay(`Design published successfully: ${JSON.stringify(publishResult)}`);
+      logToOverlay(`Success! Design ID: ${designId}, Retail Price: $${publishResult.pricing.retail_price}`);
 
     } catch (error) {
       logToOverlay(`Design Publish Error: ${error.message}`);
       console.error("Failed to publish design:", error);
-      alert(`Error publishing design: ${error.message}`);
+      logToOverlay(`Error publishing design: ${error.message}`);
     } finally {
       setIsLoadingPublish(false); 
     }

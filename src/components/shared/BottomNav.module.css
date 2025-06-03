@@ -1,0 +1,82 @@
+/* Bottom Navigation Component */
+.bottomNav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+}
+
+.navContainer {
+  display: flex;
+  border-top: 1px solid #eaedf1;
+  background-color: #f9fafb;
+  padding: 0.5rem 1rem 0.75rem 1rem;
+}
+
+.navItem {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: end;
+  gap: 0.25rem;
+  text-decoration: none;
+  border-radius: 9999px;
+  padding: 0.5rem 0.25rem;
+  transition: all 0.2s ease;
+  min-width: 0; /* Prevent flex items from overflowing */
+}
+
+.navItem:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.iconContainer {
+  display: flex;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.33;
+  letter-spacing: 0.015em;
+  margin: 0;
+  white-space: nowrap;
+  text-align: center;
+  width: 100%;
+}
+
+/* Active state - dark text */
+.active {
+  color: #101418;
+}
+
+.active .iconContainer {
+  color: #101418;
+}
+
+.active .label {
+  color: #101418;
+}
+
+/* Inactive state - gray text */
+.inactive {
+  color: #5c718a;
+}
+
+.inactive .iconContainer {
+  color: #5c718a;
+}
+
+.inactive .label {
+  color: #5c718a;
+}
+
+.spacer {
+  height: 1.25rem;
+  background-color: #f9fafb;
+}

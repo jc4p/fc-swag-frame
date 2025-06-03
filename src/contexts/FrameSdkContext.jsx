@@ -23,7 +23,6 @@ export function useFrameSdk() {
       actions: {
           signIn: async (options) => { 
               console.error('Dummy sdk.actions.signIn called. Integrate Frame SDK properly.');
-              alert('Sign-in not available. Frame SDK not integrated.');
               // Simulate failure or return structure that won't proceed
               return Promise.reject(new Error('Frame SDK not integrated')); 
           }

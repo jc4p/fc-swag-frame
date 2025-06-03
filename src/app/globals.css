@@ -61,3 +61,32 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.2;
   margin: 0;
 }
+
+/* App layout styles */
+.app-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--color-bg-primary);
+  justify-content: space-between;
+  overflow-x: hidden;
+}
+
+.main-content {
+  flex: 1;
+  padding-bottom: 5rem; /* Space for bottom nav */
+}
+
+/* Page-specific styles */
+.home-page {
+  padding-bottom: 0;
+}
+
+.create-page {
+  padding-bottom: 0;
+}
+
+.profile-page {
+  padding-bottom: 0;
+}
